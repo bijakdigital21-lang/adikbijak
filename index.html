@@ -49,7 +49,7 @@
             <h1 class="text-4xl font-black text-amber-600 mb-2 tracking-wide">Adik Bijak ✨</h1>
             <p class="text-slate-500 mb-8 font-medium text-lg">Belajar, Main & Menang Ganjaran!</p>
             
-            <button id="btn-login" class="w-full bg-white border-2 border-slate-200 hover:border-amber-400 text-slate-700 font-bold py-4 px-6 rounded-2xl shadow-lg flex items-center justify-center gap-3 bounce-hover transition-all text-lg">
+            <button id="btn-login" class="w-full bg-white border-2 border-slate-200 hover:border-amber-400 text-slate-700 font-bold py-4 px-6 rounded-2xl shadow-lg flex items-center justify-center gap-3 bounce-hover transition-all text-lg mb-3">
                 <svg class="w-6 h-6" viewBox="0 0 24 24">
                     <path fill="#EA4335" d="M12 5.04c1.66 0 3.2.57 4.38 1.69l3.27-3.27C17.66 1.48 14.98 1 12 1 7.35 1 3.37 3.67 1.39 7.56l3.89 3.02C6.21 7.54 8.85 5.04 12 5.04z"/>
                     <path fill="#4285F4" d="M23.49 12.27c0-.81-.07-1.59-.2-2.36H12v4.51h6.46c-.29 1.48-1.14 2.73-2.4 3.58l3.72 2.88c2.17-2 3.71-4.96 3.71-8.61z"/>
@@ -57,6 +57,11 @@
                     <path fill="#34A853" d="M12 23c3.24 0 5.97-1.07 7.96-2.92l-3.72-2.88c-1.04.7-2.38 1.12-4.24 1.12-3.15 0-5.79-2.5-6.72-5.54l-3.89 3.02C3.37 20.33 7.35 23 12 23z"/>
                 </svg>
                 Masuk dengan Google
+            </button>
+
+            <!-- Butang Kecemasan / Mode Demo Sekiranya Buka dari File:/// Lokal komputer -->
+            <button id="btn-demo-login" class="text-xs text-slate-400 hover:text-amber-500 underline">
+                Buka Mode Demo (Tanpa Google Auth)
             </button>
         </div>
 
@@ -300,7 +305,7 @@
             </div>
         </div>
 
-        <!-- SCREEN 6: CORE ENGINE PLAY ZONE (Dinamik bagi setiap Aktiviti Modul) -->
+        <!-- SCREEN 6: CORE ENGINE PLAY ZONE -->
         <div id="screen-play-zone" class="screen hidden flex-grow flex flex-col bg-white">
             <div class="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
                 <div class="flex items-center gap-3">
@@ -312,12 +317,10 @@
                 </button>
             </div>
 
-            <!-- Dynamic Content Area -->
             <div id="play-container" class="flex-grow p-6 flex flex-col justify-center items-center">
-                <!-- Diisi oleh Modul Engine JS -->
+                <!-- Diisi oleh JS -->
             </div>
 
-            <!-- Bottom Navigation inside play zone -->
             <div id="play-navigation" class="p-4 bg-slate-50 border-t border-slate-100 flex justify-between items-center">
                 <button id="btn-play-prev" class="px-5 py-2.5 bg-white border rounded-xl text-slate-600 font-bold hidden">Kembali</button>
                 <div class="flex-grow text-center text-slate-400 font-bold text-sm" id="play-counter">1 / 10</div>
@@ -359,13 +362,12 @@
 
     </div>
 
-    <!-- FIREBASE SERVICES CORE SYSTEM -->
+    <!-- FIREBASE SERVICES & CORE LOGIC -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, updateDoc, arrayUnion, arrayRemove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, getDoc, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-        // Firebase Configuration dari Pengguna
         const firebaseConfig = {
             apiKey: "AIzaSyBIM5kk6oz0QkCmn___A_s2X-DSyGmEMAM",
             authDomain: "adik-bijak-50fa0.firebaseapp.com",
@@ -376,15 +378,25 @@
             appId: "1:566306302068:web:effb5a20e4818cee960921"
         };
 
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        const provider = new GoogleAuthProvider();
+        // Initialize Firebase Global variables
+        let app, auth, db, provider;
+        let isFirebaseAvailable = false;
 
-        // Application Internal State Control
+        try {
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+            provider = new GoogleAuthProvider();
+            // Kekunci ketetapan skop custom untuk mengelakkan ralat popup tertutup
+            provider.setCustomParameters({ prompt: 'select_account' });
+            isFirebaseAvailable = true;
+        } catch (e) {
+            console.error("Firebase Gagal Dimuatkan: Berjalan dalam Mod Alternatif/Lokal.", e);
+        }
+
         let state = {
             currentUser: null,
+            isDemoMode: false,
             childrenList: [],
             activeChild: null,
             currentModule: null,
@@ -392,7 +404,6 @@
             activeAudioText: ""
         };
 
-        // DOM Elements mapping
         const screens = document.querySelectorAll('.screen');
         
         window.switchScreen = function(screenId) {
@@ -401,45 +412,80 @@
             if (screenId === 'screen-dashboard') renderDashboard();
         };
 
-        // Authentication Flows
+        // PEMBETULAN: Fungsi Log Masuk Google Auth
         document.getElementById('btn-login').addEventListener('click', async () => {
+            if (!isFirebaseAvailable) {
+                alert("Firebase tidak bersambung dengan betul. Menggunakan mod demo.");
+                enableDemoMode();
+                return;
+            }
             try {
                 const result = await signInWithPopup(auth, provider);
-                // Saved profile updates handlings inside onAuthStateChanged
+                console.log("Berjaya Log Masuk:", result.user);
             } catch (error) {
-                alert("Ralat Log Masuk: " + error.message);
+                console.error("Ralat Google Auth:", error);
+                alert(`Gagal Log Masuk: ${error.message}\n\nTip: Pastikan fail ini dihoskan (Firebase Hosting/Live Server) dan domain telah dibenarkan dalam Firebase Console.`);
             }
         });
 
-        document.getElementById('btn-logout').addEventListener('click', () => signOut(auth));
+        // Mod Demo Kecemasan (Jika dijalankan sebagai lokal file:/// tanpa server)
+        document.getElementById('btn-demo-login').addEventListener('click', () => {
+            enableDemoMode();
+        });
 
-        onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                state.currentUser = user;
-                // Sync user base record to firestore
-                const userRef = doc(db, "Users", user.uid);
-                await setDoc(userRef, {
-                    Nama: user.displayName,
-                    Email: user.email,
-                    PhotoURL: user.photoURL
-                }, { merge: true });
+        function enableDemoMode() {
+            state.isDemoMode = true;
+            state.currentUser = {
+                uid: "DEMO_USER_123",
+                displayName: "Ibu Bapa Demo",
+                email: "demo@adikbijak.com",
+                photoURL: "https://api.dicebear.com/7.x/bottts/svg?seed=DemoParent"
+            };
+            loadChildrenData();
+        }
 
-                loadChildrenData();
+        if (isFirebaseAvailable) {
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    state.currentUser = user;
+                    state.isDemoMode = false;
+                    const userRef = doc(db, "Users", user.uid);
+                    await setDoc(userRef, {
+                        Nama: user.displayName,
+                        Email: user.email,
+                        PhotoURL: user.photoURL
+                    }, { merge: true });
+                    loadChildrenData();
+                } else {
+                    if (!state.isDemoMode) {
+                        state.currentUser = null;
+                        state.activeChild = null;
+                        switchScreen('screen-login');
+                    }
+                }
+            });
+        }
+
+        document.getElementById('btn-logout').addEventListener('click', () => {
+            if (isFirebaseAvailable && !state.isDemoMode) {
+                signOut(auth);
             } else {
                 state.currentUser = null;
-                state.activeChild = null;
+                state.isDemoMode = false;
                 switchScreen('screen-login');
             }
         });
 
-        // Children Profiling Business Engines
+        // KAWALAN PROFIL & DATA
         async function loadChildrenData() {
             if (!state.currentUser) return;
-            const userDoc = await getDoc(doc(db, "Users", state.currentUser.uid));
-            if (userDoc.exists() && userDoc.data().Children) {
-                state.childrenList = userDoc.data().Children;
+            
+            if (state.isDemoMode) {
+                const localData = localStorage.getItem(`Children_${state.currentUser.uid}`);
+                state.childrenList = localData ? JSON.parse(localData) : [];
             } else {
-                state.childrenList = [];
+                const userDoc = await getDoc(doc(db, "Users", state.currentUser.uid));
+                state.childrenList = (userDoc.exists() && userDoc.data().Children) ? userDoc.data().Children : [];
             }
             renderProfiles();
             switchScreen('screen-profiles');
@@ -467,7 +513,6 @@
             });
             lucide.createIcons();
 
-            // Bind individual small edit buttons
             document.querySelectorAll('.btn-edit-child-data').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     const idx = e.currentTarget.getAttribute('data-index');
@@ -476,7 +521,6 @@
             });
         }
 
-        // Add/Edit Profile Actions
         document.getElementById('btn-add-profile-trigger').addEventListener('click', () => showProfileForm());
         document.getElementById('btn-back-to-profiles').addEventListener('click', () => switchScreen('screen-profiles'));
         
@@ -486,7 +530,6 @@
             document.getElementById('form-avatar-preview').src = `https://api.dicebear.com/7.x/bottts/svg?seed=${currentGeneratedSeed}`;
         });
 
-        // Base64 Local Image Trigger Fallback as storage emulator inside local file ecosystem
         document.getElementById('form-avatar-file').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (file) {
@@ -527,7 +570,6 @@
             const avatar = document.getElementById('form-avatar-preview').src;
             const theme = document.querySelector('input[name="theme"]:checked').value;
 
-            // Calculate age roughly
             const birthYear = new Date(dob).getFullYear();
             const currentYear = new Date().getFullYear();
             const age = currentYear - birthYear || 5;
@@ -547,14 +589,17 @@
                 AktivitiTerakhir: idx !== '' ? state.childrenList[idx].AktivitiTerakhir : 'Tiada'
             };
 
-            const userRef = doc(db, "Users", state.currentUser.uid);
             if (idx !== '') {
-                // Update specific index logic via mutation array array removes old and re-add updated
-                const updatedList = [...state.childrenList];
-                updatedList[idx] = childData;
-                await setDoc(userRef, { Children: updatedList }, { merge: true });
+                state.childrenList[idx] = childData;
             } else {
-                await setDoc(userRef, { Children: arrayUnion(childData) }, { merge: true });
+                state.childrenList.push(childData);
+            }
+
+            if (state.isDemoMode) {
+                localStorage.setItem(`Children_${state.currentUser.uid}`, JSON.stringify(state.childrenList));
+            } else {
+                const userRef = doc(db, "Users", state.currentUser.uid);
+                await setDoc(userRef, { Children: state.childrenList }, { merge: true });
             }
 
             loadChildrenData();
@@ -563,18 +608,21 @@
         document.getElementById('btn-delete-child').addEventListener('click', async () => {
             if (confirm("Adakah anda pasti mahu memadam profil ini?")) {
                 const idx = document.getElementById('form-child-id').value;
-                const userRef = doc(db, "Users", state.currentUser.uid);
-                const updatedList = state.childrenList.filter((_, i) => i != idx);
-                await setDoc(userRef, { Children: updatedList }, { merge: true });
+                state.childrenList = state.childrenList.filter((_, i) => i != idx);
+
+                if (state.isDemoMode) {
+                    localStorage.setItem(`Children_${state.currentUser.uid}`, JSON.stringify(state.childrenList));
+                } else {
+                    const userRef = doc(db, "Users", state.currentUser.uid);
+                    await setDoc(userRef, { Children: state.childrenList }, { merge: true });
+                }
                 loadChildrenData();
             }
         });
 
-        document.getElementById('btn-switch-profile').addEventListener('click', () => {
-            loadChildrenData();
-        });
+        document.getElementById('btn-switch-profile').addEventListener('click', () => loadChildrenData());
 
-        // DASHBOARD INTERACTION CORE & ENGINE RUNTIME
+        // MODUL PEMBELAJARAN & REKA BENTUK
         function renderDashboard() {
             if (!state.activeChild) return;
             const child = state.activeChild;
@@ -587,14 +635,12 @@
             document.getElementById('dash-trophies').innerText = child.Trofi || 0;
             document.getElementById('dash-last-activity').innerText = child.AktivitiTerakhir || 'Tiada';
 
-            // Calculate overall dynamic progress
             let totalProg = 0;
             const keys = Object.keys(child.Progress || {});
             keys.forEach(k => totalProg += (child.Progress[k] || 0));
             const overall = keys.length > 0 ? Math.round(totalProg / keys.length) : 0;
             document.getElementById('dash-overall-progress').innerText = `${overall}%`;
 
-            // Setup display scores in individual modules list elements too
             if (child.Progress) {
                 Object.keys(child.Progress).forEach(k => {
                     const el = document.getElementById(`progress-${k}`);
@@ -603,17 +649,14 @@
             }
         }
 
-        document.getElementById('btn-continue-learning').addEventListener('click', () => {
-            switchScreen('screen-modules');
-        });
+        document.getElementById('btn-continue-learning').addEventListener('click', () => switchScreen('screen-modules'));
 
-        // TEXT-TO-SPEECH (AUDIO SYSTEM EMULATOR)
         function speakText(text, lang = 'ms-MY') {
             if ('speechSynthesis' in window) {
                 window.speechSynthesis.cancel();
                 const utterance = new SpeechSynthesisUtterance(text);
                 utterance.lang = lang;
-                utterance.rate = 0.85; // slightly slower for modern preschool kids consumption
+                utterance.rate = 0.85;
                 window.speechSynthesis.speak(utterance);
             }
         }
@@ -622,7 +665,6 @@
             if (state.activeAudioText) speakText(state.activeAudioText);
         });
 
-        // MODULES CONTENT DATABASES
         const abcData = [
             { h: 'A', k: 'a', w: 'Apple', pic: '🍎' },
             { h: 'B', k: 'b', w: 'Ball', pic: '⚽' },
@@ -639,7 +681,6 @@
             { n: 'Sotong', c: 'Haiwan Laut', s: 'Swoosh', pic: '🦑' }
         ];
 
-        // ENGINE RUNTIME CONTROLLER FOR GAMES & LESSONS
         window.startModule = function(moduleType) {
             state.currentModule = moduleType;
             state.moduleStepIndex = 0;
@@ -648,22 +689,24 @@
         };
 
         async function saveProgressScore(moduleKey, scorePercentage, starReward = 0) {
-            // Internal atomic progress sync to localized active child object state + firebase cloud
             if (!state.activeChild || !state.currentUser) return;
             
             state.activeChild.Progress[moduleKey] = Math.max(state.activeChild.Progress[moduleKey] || 0, scorePercentage);
             if (starReward > 0) state.activeChild.Bintang = (state.activeChild.Bintang || 0) + starReward;
             state.activeChild.AktivitiTerakhir = moduleKey.toUpperCase();
 
-            // Trigger dynamic achievement tracking check bounds
-            if (state.activeChild.Progress['abc'] === 100 && !state.activeChild.Trofi) {
-                state.activeChild.Trofi = (state.activeChild.Trofi || 0) + 1;
+            if (state.activeChild.Progress['abc'] === 100 && state.activeChild.Trofi === 0) {
+                state.activeChild.Trofi = 1;
             }
 
-            // Sync structural mutation to firebase parent wrapper mapping directly
-            const userRef = doc(db, "Users", state.currentUser.uid);
             const updatedList = state.childrenList.map(c => c.ChildID === state.activeChild.ChildID ? state.activeChild : c);
-            await updateDoc(userRef, { Children: updatedList });
+            
+            if (state.isDemoMode) {
+                localStorage.setItem(`Children_${state.currentUser.uid}`, JSON.stringify(updatedList));
+            } else {
+                const userRef = doc(db, "Users", state.currentUser.uid);
+                await updateDoc(userRef, { Children: updatedList });
+            }
         }
 
         function executeModuleStep() {
@@ -716,7 +759,6 @@
                 state.activeAudioText = `Nombor ${currentNumber}`;
                 speakText(state.activeAudioText);
 
-                // Build modern item grid array system dynamically representing standard pre-k blocks
                 let objectsHtml = '';
                 for (let i = 0; i < currentNumber; i++) {
                     objectsHtml += `<div class="text-3xl animate-bounce" style="animation-delay: ${i*0.1}s">🍎</div>`;
@@ -728,7 +770,6 @@
                         <div class="grid grid-cols-5 gap-3 max-w-xs mx-auto p-4 bg-amber-50 rounded-2xl border min-h-[120px] items-center justify-center">
                             ${objectsHtml}
                         </div>
-                        <p class="text-slate-500 font-medium">Jom kira objek epal bersama-sama!</p>
                     </div>
                 `;
 
@@ -794,12 +835,10 @@
                     </div>
                 `;
 
-                // Handle canvas context mechanics directly for tracing fingerprint processing
                 const canvas = document.getElementById('canvas-trace');
                 const ctx = canvas.getContext('2d');
                 let drawing = false;
 
-                // Pre-draw standard faint tracking guide background layer
                 ctx.font = "bold 200px Arial";
                 ctx.fillStyle = "#E2E8F0";
                 ctx.textAlign = "center";
@@ -864,11 +903,6 @@
                             <i data-lucide="arrow-right" class="text-amber-500"></i>
                             <button class="btn-match-check bg-emerald-500 text-white font-bold py-2 px-4 rounded-xl text-sm" data-ans="correct">Apple</button>
                         </div>
-                        <div class="flex items-center justify-between p-4 bg-amber-100 rounded-2xl border border-amber-200">
-                            <span class="text-3xl">🐱</span>
-                            <i data-lucide="arrow-right" class="text-amber-500"></i>
-                            <button class="btn-match-check bg-emerald-500 text-white font-bold py-2 px-4 rounded-xl text-sm" data-ans="wrong">Ball</button>
-                        </div>
                     </div>
                 `;
                 lucide.createIcons();
@@ -881,9 +915,6 @@
                             speakText("Tahniah! Betul!");
                             e.currentTarget.className = "bg-green-200 text-green-800 font-bold py-2 px-4 rounded-xl text-sm";
                             e.currentTarget.innerText = "✓ Tepat";
-                        } else {
-                            speakText("Cuba lagi sayang");
-                            alert("Oops! Pasangan tidak sepadan. Cuba teka yang lain!");
                         }
                     });
                 });
@@ -895,7 +926,7 @@
             }
 
             else if (state.currentModule === 'padankan') {
-                document.getElementById('play-zone-title').innerText = "Main Padankan (Drag & Drop) 🎮";
+                document.getElementById('play-zone-title').innerText = "Main Padankan 🎮";
                 counter.innerText = "Permainan Kotak";
 
                 state.activeAudioText = "Padankan warna yang betul.";
@@ -903,14 +934,10 @@
 
                 container.innerHTML = `
                     <div class="w-full space-y-8 text-center">
-                        <p class="text-slate-500 text-sm">Letakkan objek merah ke dalam zon sasaran</p>
                         <div class="flex justify-around items-center">
-                            <!-- Drag item base -->
-                            <div id="drag-item" draggable="true" class="w-20 h-20 bg-rose-500 rounded-2xl shadow-md flex items-center justify-center text-white font-bold text-lg cursor-grab active:cursor-grabbing">
+                            <div id="drag-item" draggable="true" class="w-20 h-20 bg-rose-500 rounded-2xl shadow-md flex items-center justify-center text-white font-bold text-lg cursor-grab">
                                 MERAH
                             </div>
-                            
-                            <!-- Drop target boundary area -->
                             <div id="drop-target" class="w-28 h-28 border-4 border-dashed border-rose-300 rounded-3xl flex items-center justify-center text-rose-400 font-bold text-xs p-2 bg-rose-50">
                                 Letak Di Sini
                             </div>
@@ -921,31 +948,23 @@
                 const dragItem = document.getElementById('drag-item');
                 const dropTarget = document.getElementById('drop-target');
 
-                dragItem.addEventListener('dragstart', (e) => {
-                    e.dataTransfer.setData('text/plain', 'red-matched');
-                });
-
+                dragItem.addEventListener('dragstart', (e) => e.dataTransfer.setData('text/plain', 'red-matched'));
                 dropTarget.addEventListener('dragover', (e) => e.preventDefault());
-
                 dropTarget.addEventListener('drop', (e) => {
                     e.preventDefault();
-                    const data = e.dataTransfer.getData('text/plain');
-                    if (data === 'red-matched') {
+                    if (e.dataTransfer.getData('text/plain') === 'red-matched') {
                         confetti();
-                        speakText("Bagus! Padanan tepat!");
-                        dropTarget.className = "w-28 h-28 bg-rose-500 rounded-3xl flex items-center justify-center text-white font-bold text-sm text-center animate-pulse";
+                        speakText("Bagus!");
+                        dropTarget.className = "w-28 h-28 bg-rose-500 rounded-3xl flex items-center justify-center text-white font-bold text-sm";
                         dropTarget.innerText = "🎉 Betul!";
                         dragItem.style.visibility = 'hidden';
                     }
                 });
 
-                // Add support touch fallback triggers mapping manual simulation directly for iPads/Mobile compatibility
-                dragItem.addEventListener('touchstart', (e) => {
-                    dropTarget.className = "w-28 h-28 bg-rose-100 border-4 border-solid border-rose-500 rounded-3xl flex items-center justify-center text-rose-700 font-bold text-xs p-2";
-                });
-                dragItem.addEventListener('touchend', (e) => {
+                // Mobile touch support simulation
+                dragItem.addEventListener('touchend', () => {
                     confetti();
-                    dropTarget.className = "w-28 h-28 bg-rose-500 rounded-3xl flex items-center justify-center text-white font-bold text-sm text-center";
+                    dropTarget.className = "w-28 h-28 bg-rose-500 rounded-3xl flex items-center justify-center text-white font-bold text-sm";
                     dropTarget.innerText = "🎉 Betul!";
                     dragItem.style.visibility = 'hidden';
                 });
@@ -957,20 +976,13 @@
             }
         }
 
-        // TRIGGER TROPHY ROOM VIEWS
         window.showAchievements = function() {
             switchScreen('screen-achievements');
             if (!state.activeChild) return;
-            
-            if (state.activeChild.Progress['abc'] === 100) {
-                document.getElementById('trophy-abc').classList.remove('opacity-40');
-            }
-            if (state.activeChild.Progress['123'] === 100) {
-                document.getElementById('trophy-123').classList.remove('opacity-40');
-            }
+            if (state.activeChild.Progress['abc'] === 100) document.getElementById('trophy-abc').classList.remove('opacity-40');
+            if (state.activeChild.Progress['123'] === 100) document.getElementById('trophy-123').classList.remove('opacity-40');
         };
 
-        // Initialize view states fallback on mount execution loop bound
         document.getElementById('btn-play-prev').addEventListener('click', () => {
             if (state.moduleStepIndex > 0) {
                 state.moduleStepIndex--;
