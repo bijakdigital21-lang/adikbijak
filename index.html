@@ -1,1441 +1,1012 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full">
+<html lang="ms">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Bijak Grammar</title>
-    <!-- Tailwind CSS for vibrant, responsive UI -->
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <!-- FontAwesome for engaging kid-friendly icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Canvas Confetti for perfect score animations -->
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bijak Matematik - Aplikasi Pembelajaran KSSR</title>
+    <!-- Tailwind CSS & DaisyUI -->
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.7.2/dist/full.min.css" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Ikon -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300..700&family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+    
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@300..700&family=Quicksand:wght@400..700&display=swap');
         body {
-            font-family: 'Quicksand', sans-serif;
-            -webkit-tap-highlight-color: transparent;
+            font-family: 'Nunito', sans-serif;
         }
-        .heading-font {
+        h1, h2, h3, .font-kids {
             font-family: 'Fredoka', sans-serif;
         }
-        /* Custom scrollbar for clean app experience */
-        ::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
+        .animate-bounce-slow {
+            animation: bounce 3s infinite;
         }
-        ::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: rgba(0,0,0,0.1);
-            border-radius: 10px;
-        }
-        .dark ::-webkit-scrollbar-thumb {
-            background: rgba(255,255,255,0.1);
+        @keyframes bounce {
+            0%, 100% { transform: translateY(-5%); animation-timing-function: cubic-bezier(0.8,0,1,1); }
+            50% { transform: none; animation-timing-function: cubic-bezier(0,0,0.2,1); }
         }
     </style>
 </head>
-<body class="h-full bg-indigo-50 text-slate-800 dark:bg-slate-900 dark:text-slate-100 transition-colors duration-300 overflow-hidden select-none">
+<body class="bg-base-200 min-h-screen transition-colors duration-300" data-theme="cupcake">
 
-    <!-- APP WRAPPER -->
-    <div id="app" class="h-full max-w-md mx-auto bg-white dark:bg-slate-800 shadow-2xl relative flex flex-col overflow-hidden">
+    <!-- AUDIO SYSTEM (Web Audio API Fallback for Clean Clicks) -->
+    <script>
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        let soundEnabled = true;
+        function playSound(type) {
+            if (!soundEnabled) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            if (type === 'click') {
+                osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.05);
+            } else if (type === 'correct') {
+                osc.frequency.setValueAtTime(523.25, audioCtx.currentTime); // C5
+                osc.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.1); // E5
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.25);
+            } else if (type === 'wrong') {
+                osc.frequency.setValueAtTime(220, audioCtx.currentTime); // A3
+                osc.frequency.setValueAtTime(165, audioCtx.currentTime + 0.1); // E3
+                gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.3);
+            } else if (type === 'badge' || type === 'success') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(523, audioCtx.currentTime);
+                osc.frequency.setValueAtTime(659, audioCtx.currentTime + 0.1);
+                osc.frequency.setValueAtTime(784, audioCtx.currentTime + 0.2);
+                osc.frequency.setValueAtTime(1046, audioCtx.currentTime + 0.3);
+                gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.5);
+            }
+        }
+    </script>
+
+    <!-- APP CONTAINER -->
+    <div id="app" class="max-w-md mx-auto bg-base-100 min-h-screen shadow-xl flex flex-col relative overflow-x-hidden">
         
-        <!-- GLOBAL HEADER / TOP NAVIGATION -->
-        <header id="global-header" class="bg-indigo-600 dark:bg-indigo-800 text-white px-4 py-3 flex items-center justify-between shadow-md z-30 shrink-0 hidden">
-            <div class="flex items-center gap-3">
-                <button id="btn-back-nav" class="w-10 h-10 flex items-center justify-center rounded-full bg-indigo-500/30 hover:bg-indigo-500/50 transition-all text-xl">
-                    <i class="fa-solid fa-arrow-left"></i>
-                </button>
-                <div>
-                    <h1 id="header-title" class="heading-font text-lg font-bold tracking-wide">Bijak Grammar</h1>
-                    <span id="header-subtitle" class="text-xs text-indigo-200 block">Year 1 • Alphabet</span>
-                </div>
+        <!-- TOP NAVBAR (Hidden in Login Screen) -->
+        <header id="main-nav" class="navbar bg-primary text-primary-content sticky top-0 z-50 hidden rounded-b-2xl shadow-md">
+            <div class="flex-1">
+                <a class="btn btn-ghost text-xl font-kids text-white tracking-wide" onclick="showScreen('dashboard')">
+                    <i class="fa-solid fa-graduation-cap mr-2"></i>Bijak Matik
+                </a>
             </div>
-            <div class="flex items-center gap-2">
-                <div class="bg-amber-400 dark:bg-amber-500 text-slate-900 px-3 py-1 rounded-full text-sm font-bold flex items-center gap-1 shadow-sm">
-                    <i class="fa-solid fa-star text-white animate-pulse"></i>
-                    <span id="header-stars">0</span>
-                </div>
-                <div id="header-avatar-container" class="w-9 h-9 rounded-full bg-white p-0.5 overflow-hidden border border-indigo-400 cursor-pointer">
-                    <!-- Dynamic SVG Avatar inserted here -->
+            <div class="flex-none gap-2">
+                <span id="current-child-tag" class="badge badge-secondary font-bold hidden"></span>
+                <div class="dropdown dropdown-end">
+                    <div tabindex="0" role="button" class="btn btn-ghost btn-circle avatar border-2 border-white">
+                        <div class="w-10 rounded-full" id="nav-avatar">
+                            <img alt="Avatar" src="https://api.dicebear.com/7.x/bottts/svg?seed=default" />
+                        </div>
+                    </div>
+                    <ul tabindex="0" class="mt-3 z-[1] p-2 shadow menu menu-sm dropdown-content bg-base-100 text-base-content rounded-box w-52">
+                        <li><a onclick="showScreen('dashboard')"><i class="fa-solid fa-house"></i> Utama</a></li>
+                        <li><a onclick="showScreen('tetapan')"><i class="fa-solid fa-gear"></i> Tetapan</a></li>
+                        <hr class="my-1"/>
+                        <li><a onclick="handleLogout()" class="text-error"><i class="fa-solid fa-sign-out"></i> Log Keluar</a></li>
+                    </ul>
                 </div>
             </div>
         </header>
 
-        <!-- MAIN DYNAMIC VIEWS CONTAINER -->
-        <main id="view-container" class="flex-1 overflow-y-auto relative p-4 flex flex-col">
-            <!-- Dynamic Screens Inject Here -->
+        <!-- SCREEN CONTAINER -->
+        <main class="flex-1 p-4 pb-20">
+            
+            <!-- 1. AUTH SCREEN -->
+            <section id="screen-auth" class="hidden flex flex-col items-center justify-center text-center py-12">
+                <div class="w-32 h-32 bg-primary text-white rounded-full flex items-center justify-center text-6xl shadow-lg animate-bounce-slow mb-6">
+                    <i class="fa-solid fa-calculator"></i>
+                </div>
+                <h1 class="text-4xl font-black text-primary mb-2 tracking-tight">Bijak Matematik</h1>
+                <p class="text-base-content/70 px-6 mb-8 text-sm">Kuasai Silibus KSSR Matematik Tahun 1 hingga 6 dengan ceria, pantas dan interaktif!</p>
+                <div class="card w-full max-w-sm bg-base-200 shadow-inner p-6 rounded-3xl">
+                    <h3 class="font-bold text-lg mb-4">Mula Belajar Sekarang</h3>
+                    <button class="btn btn-neutral btn-block rounded-2xl normal-case gap-3 text-white" onclick="handleGoogleLogin()">
+                        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-5 h-5" alt="Google">
+                        Log Masuk dengan Google
+                    </button>
+                </div>
+            </section>
+
+            <!-- 2. DASHBOARD SCREEN -->
+            <section id="screen-dashboard" class="hidden space-y-6">
+                <div class="bg-gradient-to-r from-teal-400 to-emerald-400 p-5 rounded-3xl text-white shadow-md relative overflow-hidden">
+                    <div class="relative z-10">
+                        <p class="text-xs uppercase tracking-wider opacity-80">Selamat Datang 👋</p>
+                        <h2 class="text-2xl font-black mb-1" id="dash-user-name">Pengguna</h2>
+                        <p class="text-xs opacity-90">Sila pilih atau cipta profil anak untuk mula menjejak prestasi pembelajaran.</p>
+                    </div>
+                    <i class="fa-solid fa-shapes absolute -right-4 -bottom-4 text-8xl opacity-10 rotate-12"></i>
+                </div>
+
+                <div>
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="text-lg font-black"><i class="fa-solid fa-users text-primary mr-1"></i> Profil Anak</h3>
+                        <button class="btn btn-xs btn-primary rounded-lg" onclick="openProfileModal(false)"><i class="fa-solid fa-plus"></i> Tambah</button>
+                    </div>
+                    <div id="profiles-list" class="grid grid-cols-2 gap-3">
+                        <!-- Profiles Dynamic -->
+                    </div>
+                </div>
+
+                <!-- ACTIVE PROFILE AREA -->
+                <div id="active-profile-dashboard" class="hidden space-y-4">
+                    <hr class="border-base-300"/>
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-lg font-black text-secondary"><i class="fa-solid fa-book-open mr-1"></i> Silibus Pembelajaran</h3>
+                        <span id="active-child-indicator" class="text-xs font-bold badge badge-outline badge-secondary"></span>
+                    </div>
+                    
+                    <div class="grid grid-cols-3 gap-2">
+                        <button class="btn btn-outline btn-primary font-kids rounded-2xl flex flex-col p-2 h-auto" onclick="selectYear(1)">
+                            <span class="text-xl">1</span><span class="text-[10px]">Tahun 1</span>
+                        </button>
+                        <button class="btn btn-outline btn-primary font-kids rounded-2xl flex flex-col p-2 h-auto" onclick="selectYear(2)">
+                            <span class="text-xl">2</span><span class="text-[10px]">Tahun 2</span>
+                        </button>
+                        <button class="btn btn-outline btn-primary font-kids rounded-2xl flex flex-col p-2 h-auto" onclick="selectYear(3)">
+                            <span class="text-xl">3</span><span class="text-[10px]">Tahun 3</span>
+                        </button>
+                        <button class="btn btn-outline btn-primary font-kids rounded-2xl flex flex-col p-2 h-auto" onclick="selectYear(4)">
+                            <span class="text-xl">4</span><span class="text-[10px]">Tahun 4</span>
+                        </button>
+                        <button class="btn btn-outline btn-primary font-kids rounded-2xl flex flex-col p-2 h-auto" onclick="selectYear(5)">
+                            <span class="text-xl">5</span><span class="text-[10px]">Tahun 5</span>
+                        </button>
+                        <button class="btn btn-outline btn-primary font-kids rounded-2xl flex flex-col p-2 h-auto" onclick="selectYear(6)">
+                            <span class="text-xl">6</span><span class="text-[10px]">Tahun 6</span>
+                        </button>
+                    </div>
+
+                    <!-- PROGRESS & BADGES -->
+                    <div class="card bg-base-200 p-4 rounded-2xl space-y-3">
+                        <h4 class="font-bold text-sm flex justify-between">
+                            <span><i class="fa-solid fa-chart-pie mr-1 text-info"></i> Ringkasan Prestasi</span>
+                            <span id="dash-overall-progress" class="text-primary">0%</span>
+                        </h4>
+                        <progress id="dash-progress-bar" class="progress progress-primary w-full" value="0" max="100"></progress>
+                        
+                        <div class="pt-2">
+                            <p class="text-xs font-bold mb-2 text-base-content/70"><i class="fa-solid fa-medal text-warning mr-1"></i> Lencana Pencapaian (<span id="badge-count">0</span>)</p>
+                            <div id="dash-badges-container" class="flex flex-wrap gap-2">
+                                <!-- Badges dynamic -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 3. TOPICS LIST SCREEN -->
+            <section id="screen-topics" class="hidden space-y-4">
+                <div class="flex items-center gap-2">
+                    <button class="btn btn-sm btn-circle btn-ghost" onclick="showScreen('dashboard')"><i class="fa-solid fa-arrow-left"></i></button>
+                    <h2 class="text-xl font-black" id="topics-title">Matematik Tahun X</h2>
+                </div>
+                <div id="topics-container" class="space-y-3">
+                    <!-- Topics listed here -->
+                </div>
+            </section>
+
+            <!-- 4. TOPIC DETAIL (NOTA) SCREEN -->
+            <section id="screen-topic-detail" class="hidden space-y-4">
+                <div class="flex items-center justify-between">
+                    <button class="btn btn-sm btn-circle btn-ghost" onclick="showScreen('topics')"><i class="fa-solid fa-arrow-left"></i></button>
+                    <h3 class="text-base font-black truncate max-w-[200px]" id="note-topic-title">Topik</h3>
+                    <span class="badge badge-accent font-bold" id="note-year-tag">Tahun X</span>
+                </div>
+
+                <div class="card bg-base-100 border border-base-300 p-4 rounded-2xl space-y-4 shadow-inner overflow-y-auto max-h-[70vh]">
+                    <!-- Dynamic Note Content Loaded Here -->
+                    <div id="note-content" class="prose text-sm max-w-none"></div>
+                </div>
+
+                <button class="btn btn-primary btn-block rounded-2xl text-white font-kids text-lg gap-2 shadow" onclick="startQuiz()">
+                    <i class="fa-solid fa-play animate-pulse"></i> Mula Kuiz (15 Soalan)
+                </button>
+            </section>
+
+            <!-- 5. QUIZ SCREEN -->
+            <section id="screen-quiz" class="hidden space-y-4">
+                <div class="flex justify-between items-center text-xs font-bold">
+                    <span class="text-neutral">Soalan <span id="quiz-current-idx">1</span>/15</span>
+                    <span class="text-warning"><i class="fa-solid fa-clock mr-1"></i><span id="quiz-timer">00:00</span></span>
+                </div>
+                <progress id="quiz-progress" class="progress progress-secondary w-full" value="1" max="15"></progress>
+
+                <!-- Question Card -->
+                <div class="card bg-base-200 p-5 rounded-2xl space-y-4 min-h-[160px] flex flex-col justify-center relative shadow-sm">
+                    <div id="quiz-question-visual" class="flex justify-center mb-2"></div>
+                    <p id="quiz-question-text" class="font-bold text-center text-base md:text-lg text-base-content"></p>
+                </div>
+
+                <!-- Answer Interface Wrapper -->
+                <div id="quiz-answer-zone" class="space-y-2">
+                    <!-- Dynamic choices or input boxes here -->
+                </div>
+
+                <!-- Feedback Area (Correct/Wrong) -->
+                <div id="quiz-feedback" class="hidden card p-4 rounded-2xl text-sm font-medium border animate-fadeIn">
+                    <div id="feedback-status" class="font-black text-lg mb-1"></div>
+                    <div id="feedback-explanation" class="text-xs space-y-1 opacity-90 leading-relaxed"></div>
+                    <button id="btn-next-question" class="btn btn-sm btn-neutral mt-3 rounded-lg float-right" onclick="nextQuestion()">Seterusnya <i class="fa-solid fa-chevron-right text-xs"></i></button>
+                </div>
+            </section>
+
+            <!-- 6. RESULTS SCREEN -->
+            <section id="screen-results" class="hidden text-center space-y-5 py-4">
+                <div>
+                    <h2 class="text-3xl font-black text-primary" id="res-rating-text">Cemerlang!</h2>
+                    <div class="text-4xl my-2 text-warning" id="res-stars">⭐⭐⭐⭐⭐</div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3 max-w-sm mx-auto">
+                    <div class="bg-base-200 p-3 rounded-xl shadow-inner">
+                        <p class="text-2xl font-black text-success" id="res-score">15/15</p>
+                        <p class="text-[11px] font-bold uppercase tracking-wider opacity-60">Betul / Jumlah</p>
+                    </div>
+                    <div class="bg-base-200 p-3 rounded-xl shadow-inner">
+                        <p class="text-2xl font-black text-info" id="res-percent">100%</p>
+                        <p class="text-[11px] font-bold uppercase tracking-wider opacity-60">Peratusan</p>
+                    </div>
+                    <div class="bg-base-200 p-3 rounded-xl shadow-inner">
+                        <p class="text-lg font-black text-neutral" id="res-time">02:30</p>
+                        <p class="text-[11px] font-bold uppercase tracking-wider opacity-60">Masa Diambil</p>
+                    </div>
+                    <div class="bg-base-200 p-3 rounded-xl shadow-inner">
+                        <p class="text-lg font-black text-secondary" id="res-status">Lulus</p>
+                        <p class="text-[11px] font-bold uppercase tracking-wider opacity-60">Tahap</p>
+                    </div>
+                </div>
+
+                <div class="space-y-2 max-w-sm mx-auto pt-4">
+                    <button class="btn btn-primary btn-block rounded-xl text-white" onclick="showScreen('topics')"><i class="fa-solid fa-list"></i> Kembali ke Topik</button>
+                    <button class="btn btn-outline btn-block rounded-xl" onclick="startQuiz()"><i class="fa-solid fa-rotate-right"></i> Cuba Lagi Sesi Ini</button>
+                </div>
+            </section>
+
+            <!-- 7. SETTINGS SCREEN -->
+            <section id="screen-tetapan" class="hidden space-y-5">
+                <div class="flex items-center gap-2">
+                    <button class="btn btn-sm btn-circle btn-ghost" onclick="showScreen('dashboard')"><i class="fa-solid fa-arrow-left"></i></button>
+                    <h2 class="text-xl font-black">Tetapan Aplikasi</h2>
+                </div>
+
+                <div class="card bg-base-200 p-4 rounded-2xl space-y-4">
+                    <div class="form-control w-full">
+                        <label class="label"><span class="label-text font-bold text-xs">Nama Paparan Penjaga</span></label>
+                        <div class="join w-full">
+                            <input type="text" id="settings-username" class="input input-bordered join-item w-full input-sm" placeholder="Nama anda" />
+                            <button class="btn btn-primary btn-sm join-item text-white" onclick="updateParentName()">Simpan</button>
+                        </div>
+                    </div>
+
+                    <div class="form-control">
+                        <label class="label cursor-pointer">
+                            <span class="label-text font-bold text-sm"><i class="fa-solid fa-volume-high mr-1 text-primary"></i> Kesan Bunyi Audio</span>
+                            <input type="checkbox" id="settings-audio-toggle" checked class="toggle toggle-primary" onchange="soundEnabled = this.checked; playSound('click');"/>
+                        </label>
+                    </div>
+
+                    <div class="form-control">
+                        <label class="label cursor-pointer">
+                            <span class="label-text font-bold text-sm"><i class="fa-solid fa-moon mr-1 text-neutral"></i> Mod Gelap (Dark Mode)</span>
+                            <input type="checkbox" id="settings-theme-toggle" class="toggle toggle-secondary" onchange="toggleTheme(this.checked)"/>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="collapse collapse-arrow bg-base-200 rounded-xl">
+                    <input type="radio" name="settings-accordion" checked="checked" /> 
+                    <div class="collapse-title text-sm font-bold"><i class="fa-solid fa-shield-halved text-success mr-2"></i> Polisi Privasi & Terma</div>
+                    <div class="collapse-content text-xs space-y-2 opacity-80">
+                        <p><strong>Polisi Privasi:</strong> Data perkembangan anak anda disimpan dengan selamat di infrastruktur Google Firebase. Kami tidak berkongsi maklumat dengan mana-mana pihak ketiga.</p>
+                        <p><strong>Terma Penggunaan:</strong> Aplikasi Bijak Matematik disediakan secara percuma untuk kegunaan pendidikan murid-murid sekolah rendah Malaysia.</p>
+                    </div>
+                </div>
+
+                <div class="collapse collapse-arrow bg-base-200 rounded-xl">
+                    <input type="radio" name="settings-accordion" /> 
+                    <div class="collapse-title text-sm font-bold"><i class="fa-solid fa-envelope text-info mr-2"></i> Hubungi Kami</div>
+                    <div class="collapse-content text-xs opacity-80">
+                        <p>Mempunyai cadangan atau menghadapi pepijat? Hubungi pasukan sokongan teknikal kami di emel rasmi: <strong>support@bijakmatematik.edu.my</strong></p>
+                    </div>
+                </div>
+
+                <button class="btn btn-error btn-block btn-outline rounded-xl mt-6" onclick="handleLogout()">
+                    <i class="fa-solid fa-sign-out"></i> Log Keluar dari Akaun
+                </button>
+            </section>
+
         </main>
 
-        <!-- BOTOM NAVIGATION FOR DASHBOARD VIEWS -->
-        <nav id="bottom-nav" class="bg-white dark:bg-slate-800 border-t border-slate-100 dark:border-slate-700 px-2 py-1.5 flex justify-around items-center z-30 shadow-lg shrink-0 hidden">
-            <button data-target="home" class="nav-item flex flex-col items-center gap-0.5 text-indigo-600 dark:text-indigo-400 px-3 py-1.5 rounded-xl transition-all">
-                <i class="fa-solid fa-house-chimney text-xl"></i>
-                <span class="text-xs font-semibold">Home</span>
-            </button>
-            <button data-target="topics" class="nav-item flex flex-col items-center gap-0.5 text-slate-400 dark:text-slate-500 px-3 py-1.5 rounded-xl transition-all">
-                <i class="fa-solid fa-book-open-reader text-xl"></i>
-                <span class="text-xs font-semibold">Topics</span>
-            </button>
-            <button data-target="challenges" class="nav-item flex flex-col items-center gap-0.5 text-slate-400 dark:text-slate-500 px-3 py-1.5 rounded-xl transition-all">
-                <i class="fa-solid fa-trophy text-xl"></i>
-                <span class="text-xs font-semibold">Play</span>
-            </button>
-            <button data-target="profile" class="nav-item flex flex-col items-center gap-0.5 text-slate-400 dark:text-slate-500 px-3 py-1.5 rounded-xl transition-all">
-                <i class="fa-solid fa-user-astronaut text-xl"></i>
-                <span class="text-xs font-semibold">Profile</span>
-            </button>
-        </nav>
+        <!-- CHILD PROFILE DIALOG (MODAL) -->
+        <dialog id="profile-modal" class="modal modal-bottom sm:modal-middle">
+            <div class="modal-box rounded-t-3xl sm:rounded-3xl">
+                <h3 class="font-black text-lg mb-4" id="modal-profile-title">Profil Anak Baru</h3>
+                <input type="hidden" id="modal-profile-id" />
+                <div class="space-y-4">
+                    <div class="form-control w-full">
+                        <label class="label"><span class="label-text font-bold">Nama Penuh Anak</span></label>
+                        <input type="text" id="modal-profile-name" placeholder="Contoh: Ahmad" class="input input-bordered w-full rounded-xl" />
+                    </div>
+                    <div class="form-control w-full">
+                        <label class="label"><span class="label-text font-bold">Tahun / Gred Persekolahan</span></label>
+                        <select id="modal-profile-year" class="select select-bordered w-full rounded-xl">
+                            <option value="1">Tahun 1</option>
+                            <option value="2">Tahun 2</option>
+                            <option value="3">Tahun 3</option>
+                            <option value="4">Tahun 4</option>
+                            <option value="5">Tahun 5</option>
+                            <option value="6">Tahun 6</option>
+                        </select>
+                    </div>
+                    <div class="form-control w-full">
+                        <label class="label"><span class="label-text font-bold">Pilih Ikon Avatar</span></label>
+                        <div class="flex justify-around gap-2 p-2 bg-base-200 rounded-xl overflow-x-auto" id="avatar-picker">
+                            <!-- Populated via script -->
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-action flex justify-between mt-6">
+                    <button class="btn btn-error btn-sm rounded-lg text-white hidden" id="btn-delete-profile" onclick="deleteProfileClick()">Padam</button>
+                    <div class="flex gap-2 ml-auto">
+                        <button class="btn btn-ghost btn-sm rounded-lg" onclick="document.getElementById('profile-modal').close()">Batal</button>
+                        <button class="btn btn-primary btn-sm rounded-lg text-white" onclick="saveProfileClick()">Simpan</button>
+                    </div>
+                </div>
+            </div>
+        </dialog>
+
     </div>
 
-    <!-- DATA ARCHITECTURE & ENGINE SCRIPT -->
+    <!-- FIREBASE MODULE INTEGRATION -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, updateDoc, deleteField } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        // Konfigurasi Firebase Pengguna
+        const firebaseConfig = {
+            apiKey: "AIzaSyBIM5kk6oz0QkCmn___A_s2X-DSyGmEMAM",
+            authDomain: "adik-bijak-50fa0.firebaseapp.com",
+            databaseURL: "https://adik-bijak-50fa0-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "adik-bijak-50fa0",
+            storageBucket: "adik-bijak-50fa0.firebasestorage.app",
+            messagingSenderId: "566306302068",
+            appId: "1:566306302068:web:effb5a20e4818cee960921"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const provider = new GoogleAuthProvider();
+
+        // Global State
+        window.currentUser = null;
+        window.userData = { name: '', children: {} };
+        window.selectedChildId = null;
+        window.currentYear = null;
+        window.currentTopic = null;
+
+        // Firebase Auth Monitoring
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                window.currentUser = user;
+                document.getElementById('main-nav').classList.remove('hidden');
+                document.getElementById('settings-username').value = user.displayName || '';
+                
+                // Fetch user Cloud data from Firestore
+                const userDocRef = doc(db, "users", user.uid);
+                const userDocSnap = await getDoc(userDocRef);
+                
+                if (userDocSnap.exists()) {
+                    window.userData = userDocSnap.data();
+                } else {
+                    window.userData = { name: user.displayName || 'Ibu Bapa/Penjaga', children: {} };
+                    await setDoc(userDocRef, window.userData);
+                }
+                
+                renderDashboard();
+                showScreen('dashboard');
+            } else {
+                window.currentUser = null;
+                document.getElementById('main-nav').classList.add('hidden');
+                showScreen('auth');
+            }
+        });
+
+        // Auth Operations Exposition
+        window.handleGoogleLogin = () => {
+            playSound('click');
+            signInWithPopup(auth, provider).catch(err => console.error("Login gagal: ", err));
+        };
+
+        window.handleLogout = () => {
+            playSound('click');
+            signOut(auth).then(() => {
+                window.location.reload();
+            });
+        };
+
+        window.updateParentName = async () => {
+            playSound('click');
+            const newName = document.getElementById('settings-username').value.trim();
+            if(!newName || !window.currentUser) return;
+            window.userData.name = newName;
+            await updateDoc(doc(db, "users", window.currentUser.uid), { name: newName });
+            renderDashboard();
+            alert("Nama penjaga berjaya dikemaskini!");
+        };
+
+        window.saveProfileToCloud = async () => {
+            if(window.currentUser) {
+                await setDoc(doc(db, "users", window.currentUser.uid), window.userData);
+                renderDashboard();
+            }
+        };
+    </script>
+
+    <!-- CORE APPLICATION LOGIC & SYLLABUS DATA ENGINE -->
     <script>
-        // --- COMPLETE SYLLABUS DATA STORAGE ---
-        const SYLLABUS_DATABASE = {
+        // Full KSSR Syllabus Comprehensive Data Structure
+        const KSSR_SYLLABUS = {
             1: [
-                { id: "1_alphabet", title: "Alphabet", desc: "Master big and small ABC letters!", rules: "Capital letters are used for names and starting sentences. Small letters are used everywhere else.", tips: "Say the letters out loud to map them to your spelling!", error: "Writing 'apple' with a capital A inside a sentence without reason.", summary: "A to Z contains 26 building blocks of English.", examples: ["Apple begins with A", "b is a small letter", "Cat matches with C"] },
-                { id: "1_capital", title: "Capital Letters", desc: "When to use structural ABCs.", rules: "Always use a capital letter for names, days, months, and the word 'I'.", tips: "The start of every clean sentence needs a Capital!", error: "Writing 'i love cats' instead of 'I love cats'.", summary: "Capitals give dynamic focus to names and openings.", examples: ["My friend is Adam.", "Today is Monday.", "I am seven years old."] },
-                { id: "1_nouns", title: "Common Nouns", desc: "Naming everyday items, places, and things.", rules: "Common nouns name general things. Do not capitalize them unless they start a sentence.", tips: "If you can touch it, see it, or go inside it, it's a noun!", error: "Capitalizing common items like 'The Chair is blue.'", summary: "Nouns classify the objects around us.", examples: ["The dog is barking.", "Go to school.", "Read this book."] },
-                { id: "1_singular", title: "Singular & Plural", desc: "One item versus many items.", rules: "Add '-s' or '-es' when counting more than one object.", tips: "One book, but two books! Hear the soft 's' sound.", error: "Saying 'two cat' instead of 'two cats'.", summary: "Singular means one. Plural means more than one.", examples: ["I have one apple.", "She has three apples.", "Look at those boxes."] },
-                { id: "1_pronouns", title: "Pronouns", desc: "Replacing names gracefully.", rules: "Use 'He' for boys, 'She' for girls, 'It' for things, and 'They' for groups.", tips: "Pronouns save you from repeating the same name over and over.", error: "Saying 'Sarah is fast because Sarah runs.'", summary: "He, she, it, I, you, we, and they represent names.", examples: ["He loves football.", "She is laughing.", "It is a fast car."] },
-                { id: "1_verbs", title: "Simple Verbs", desc: "Action building blocks.", rules: "Verbs show actions or status. Use them to express what subjects are doing.", tips: "Verbs are your action engines!", error: "Omitting verbs, e.g., 'He soccer' instead of 'He plays soccer.'", summary: "Every sentence requires an action or state of being.", examples: ["Birds fly high.", "I run fast.", "We sit down."] },
-                { id: "1_colours", title: "Colours", desc: "Describing the vibrant world.", rules: "Colours function as descriptive adjectives placed before nouns.", tips: "Colours help paint a picture with your words.", error: "Saying 'The car blue' instead of 'The blue car'.", summary: "Adjectives like blue, red, and yellow modify nouns.", examples: ["The green leaf fell.", "I love my red bike.", "The sky is blue."] },
-                { id: "1_numbers", title: "Numbers", desc: "Counting nouns perfectly.", rules: "Write counts clearly before nouns. Pluralize nouns if the number is greater than one.", tips: "Check your trailing 's' if the number is above 1!", error: "Writing 'five ball'.", summary: "Numbers measure the quantity of nouns precisely.", examples: ["There are five birds.", "I see one dog.", "Ten pencils are on the desk."] },
-                { id: "1_days", title: "Days of the Week", desc: "Structuring calendar periods.", rules: "Every day of the week must start with a clean capital letter.", tips: "Monday to Sunday all end with the word 'day'!", error: "Writing 'tuesday' with a small letter.", summary: "7 days make a week. Keep them properly capitalized.", examples: ["We go to school on Monday.", "Friday is fun.", "Sunday is a rest day."] },
-                { id: "1_months", title: "Months", desc: "Naming the twelve phases.", rules: "All 12 months require strict uppercase starting letters.", tips: "January is Month 1, December is Month 12!", error: "Writing 'my birthday is in august' with a lower-case 'a'.", summary: "Months chart the year. Keep their first letters capital.", examples: ["January is cold.", "National Day is in August.", "December ends the year."] },
-                { id: "1_prepositions", title: "Prepositions", desc: "Locating items cleanly.", rules: "Use 'in', 'on', and 'under' to clarify location positions.", tips: "Think about where an object sits to select the right connector.", error: "Saying 'The fish is on the water' instead of 'in the water'.", summary: "Prepositions position nouns in space.", examples: ["The cat sits on the mat.", "The pen is in the box.", "A ball is under the slide."] },
-                { id: "1_articles", title: "Articles (a/an)", desc: "Singular noun pointers.", rules: "Use 'an' before vowel sounds (a, e, i, o, u) and 'a' before consonants.", tips: "Listen to the sound! 'An apple' flows better than 'a apple'.", error: "Writing 'a elephant'.", summary: "A and An show singular general objects.", examples: ["I ate an apple.", "This is a book.", "She saw an owl."] },
-                { id: "1_this_that", title: "This / That", desc: "Pointing to single objects.", rules: "Use 'This' for singular items nearby, 'That' for singular items far away.", tips: "This is near my hand, that is over there!", error: "Using 'This' for a bird flying far up in the sky.", summary: "Distance controls the shift from this to that.", examples: ["This book in my hand is fun.", "That star is very bright.", "This is my ice cream."] },
-                { id: "1_these_those", title: "These / Those", desc: "Pointing to plural objects.", rules: "Use 'These' for many items nearby, 'Those' for many items far away.", tips: "These and Those are the big brothers of This and That!", error: "Saying 'Those books' for items you are currently holding.", summary: "Plural item tracking requires proximity focus adjustments.", examples: ["These shoes look great on me.", "Those birds are flying away.", "Look at these toys here."] },
-                { id: "1_sentences", title: "Simple Sentences", desc: "Structuring basic complete thoughts.", rules: "A complete sentence needs a Subject, a Verb, a Capital letter, and a Full Stop.", tips: "Always finish your thought with a clear full stop!", error: "Forgetting the final full stop.", summary: "Combine parts of speech into complete, readable thoughts.", examples: ["The boy runs fast.", "She plays the piano.", "We love English."] }
+                { id: "t1_nombor", title: "Nombor Bulat hingga 100", note: "Mari belajar nilai nombor, susunan menaik (1,2,3) dan menurun (3,2,1). Fahamkan juga konsep nilai tempat (Sa, Puluh)." },
+                { id: "t1_tambah", title: "Tambah", note: "Tambah bermaksud menggabungkan dua kumpulan nilai menjadi jumlah yang lebih besar. Contohnya: 3 epal + 2 epal = 5 epal kesemuanya." },
+                { id: "t1_tolak", title: "Tolak", note: "Tolak ialah proses mengurangkan atau membuang sesuatu daripada kumpulan objek. Baki akan menjadi lebih kecil." },
+                { id: "t1_wang", title: "Wang (Sen & Ringgit)", note: "Kenali duit syiling 5 sen, 10 sen, 20 sen, 50 sen serta wang kertas RM1, RM5, RM10. Ingat, 100 sen sama nilainya dengan RM1!" },
+                { id: "t1_masa", title: "Masa dan Waktu", note: "Kenali waktu pagi, tengahari, petang dan malam. Belajar membaca jam dinding mengikut muka jam bulat, jarum pendek jam dan jarum panjang minit." },
+                { id: "t1_pecahan", title: "Pecahan Asas", note: "Pecahan menunjukkan sebahagian daripada satu objek penuh. Contoh konsep asas: Separuh (1/2) dan suku (1/4)." },
+                { id: "t1_ukuran", title: "Ukuran & Sukatan", note: "Membandingkan panjang (panjang/pendek), jisim (berat/ringan), dan isi padu cecair (banyak/sedikit) menggunakan unit bukan piawai." },
+                { id: "t1_bentuk", title: "Bentuk Tiga Dimensi & Dua Dimensi", note: "Kenali bentuk 3D (kubus, kuboid, piramid, silinder, sfera) dan bentuk 2D (segi empat sama, segi empat tepat, segi tiga, bulatan)." },
+                { id: "t1_data", title: "Pengurusan Data", note: "Mengumpul data objek harian berdasarkan ciri-ciri fizikal dan menyusunnya dalam bentuk piktograf ringkas." }
             ],
             2: [
-                { id: "2_proper", title: "Proper Nouns", desc: "Special names for unique entities.", rules: "Proper nouns name specific people, places, or brands. They always start with capital letters.", tips: "Your name is a proper noun! It always takes a Capital.", error: "Writing 'kuala lumpur' in lowercase.", summary: "Specific identities require capitalization.", examples: ["We live in Malaysia.", "My dog is named Max.", "Miss Lee is teaching."] },
-                { id: "2_possessive", title: "Possessive Nouns", desc: "Showing ownership clearly.", rules: "Add an apostrophe and an s ('s) to show that something belongs to a person or animal.", tips: "The apostrophe acts like a little hook holding onto your property!", error: "Writing 'The dogs bone' without the apostrophe.", summary: "Ownership is tracked via structural apostrophes.", examples: ["This is John's bag.", "The cat's tail is fluffy.", "My mother's cake is yummy."] },
-                { id: "2_adjectives", title: "Adjectives", desc: "Adding descriptive colors.", rules: "Adjectives describe or modify nouns, explaining size, shape, color, or feelings.", tips: "Adjectives make basic sentences interesting!", error: "Placing the adjective after the noun: 'The jacket red.'", summary: "Descriptive modifiers enrich baseline nouns.", examples: ["The big elephant walked.", "He found a shiny coin.", "She is a happy girl."] },
-                { id: "2_action", title: "Action Verbs", desc: "Physical motion indicators.", rules: "Action verbs express physical things you can actively do.", tips: "Jump, skip, dance, write—these are all physical motions!", error: "Confusing physical action words with static connectors.", summary: "Action verbs drive energy and physical motion into sentences.", examples: ["They jump on the bed.", "He writes a short story.", "We swim in the pool."] },
-                { id: "2_helping", title: "Helping Verbs", desc: "Supporting main actions.", rules: "Helping verbs like 'is', 'am', and 'are' assist main actions or show states of being.", tips: "Match 'is' with one person, and 'are' with multiple people!", error: "Writing 'They is running' instead of 'They are running'.", summary: "Helping verbs match nouns with tense frames.", examples: ["I am doing my homework.", "He is cooking dinner.", "They are playing football."] },
-                { id: "2_present", title: "Present Tense", desc: "What happens regularly.", rules: "Add '-s' or '-es' to the action verb if the subject is singular (he, she, it). Keep it plain for plural.", tips: "Singular subjects demand an 's' on the active present verb!", error: "Saying 'He play football every day.'", summary: "Habits and everyday truths use simple present tense.", examples: ["He walks to school daily.", "They play video games.", "She loves ice cream."] },
-                { id: "2_past", title: "Past Tense", desc: "Actions that already finished.", rules: "Add '-ed' to regular verbs to show actions completed yesterday or in the past.", tips: "Look out for past timestamps like 'yesterday' or 'last night'!", error: "Writing 'Yesterday I play basketball.'", summary: "Completed actions shift into past structures.", examples: ["We cooked dinner yesterday.", "He jumped over the puddle.", "She watched a fun movie."] },
-                { id: "2_prepositions", title: "Prepositions", desc: "Advanced location tracking.", rules: "Use 'next to', 'between', and 'behind' to explain complex object placements.", tips: "Visualize positions to choose the right preposition.", error: "Confusing 'between' (2 objects) with 'among' (many objects).", summary: "Advanced spatial links give accurate directions.", examples: ["The ball is between the shoes.", "Stand next to me.", "The sun hid behind clouds."] },
-                { id: "2_conjunctions", title: "Conjunctions", desc: "Gluing sentence parts together.", rules: "Use 'and' to add things, and 'but' to show an opposite idea or contrast.", tips: "Conjunctions help combine short sentences into longer ones!", error: "Writing two complete thoughts together without a connector.", summary: "Connect ideas smoothly using and or but.", examples: ["I like apples and bananas.", "He ran fast but missed the bus.", "It was cold but sunny."] },
-                { id: "2_questions", title: "Question Words", desc: "Asking for details correctly.", rules: "Use 'Who' for people, 'What' for things, and 'Where' for locations.", tips: "Always finish an inquiry with a clear question mark!", error: "Using 'Where' to ask about a person's identity.", summary: "Wh- words prompt specific details.", examples: ["Who is your teacher?", "What are you reading?", "Where is the library?"] },
-                { id: "2_opposites", title: "Opposites", desc: "Contrasting descriptive ideas.", rules: "Antonyms are pairs of words that mean completely contrary things.", tips: "Pairing opposites expands your descriptive choices!", error: "Mixing up word pairings incorrectly.", summary: "Opposite adjectives build expressive descriptive contrasts.", examples: ["The giant is big, the ant is small.", "Ice is cold, fire is hot.", "The rock is hard, the pillow is soft."] },
-                { id: "2_comparisons", title: "Comparisons", desc: "Comparing two elements directly.", rules: "Add '-er' + 'than' to short adjectives when comparing two things.", tips: "Always include 'than' right after your comparative adjective!", error: "Writing 'He is taller me' instead of 'He is taller than me'.", summary: "Compare two objects by modifying adjectives with -er.", examples: ["A plane is faster than a train.", "I am older than my brother.", "This box is heavier than that one."] },
-                { id: "2_building", title: "Sentence Building", desc: "SVO construction frames.", rules: "Construct standard sentences using the Subject + Verb + Object sequence.", tips: "Identify who is performing the action first!", error: "Scrambling structures like 'The apple ate boy'.", summary: "SVO keeps sentences clear and readable.", examples: ["The girl kicked the ball.", "Cats chase tiny mice.", "The chef bakes fresh bread."] },
-                { id: "2_punctuation", title: "Punctuation", desc: "Controlling rhythm and phrasing.", rules: "Use capital letters, commas for listing things, and full stops to finish thoughts.", tips: "Commas let readers pause briefly while processing a list!", error: "Omitting commas in a list of items.", summary: "Punctuation adds clarity and rhythm to writing.", examples: ["I bought apples, bananas, and grapes.", "Wow, that looks great!", "Is this your pencil?"] },
-                { id: "2_reading", title: "Reading Grammar", desc: "Spotting grammar rules within texts.", rules: "Analyze short stories to find nouns, verbs, and adjectives working together.", tips: "Read carefully to spot how rules build real stories!", error: "Ignoring context clues while reading.", summary: "Grammar rules combine to create context and stories.", examples: ["The small boy ran quickly.", "She found a gold key.", "They live in a beautiful house."] }
+                { id: "t2_nombor", title: "Nombor Bulat hingga 1000", note: "Meliputi nilai tempat ratus, puluh dan sa. Belajar juga membundar nombor bulat kepada puluh terdekat." },
+                { id: "t2_tambah", title: "Tambah dan Tolak", note: "Operasi tambah dan tolak berturut-turut dalam lingkungan 1000 dengan teknik mengumpul semula (simpan/pinjam)." },
+                { id: "t2_darab", title: "Darab Asas", note: "Darab adalah konsep penambahan berulang. Sifir asas 2, 3, 4, 5, dan 10 mesti dihafal dengan lancar!" },
+                { id: "t2_bahagi", title: "Bahagi Asas", note: "Bahagi ialah pengongsian sama rata atau pengumpulan objek secara adil. Kebalikan daripada operasi darab." },
+                { id: "t2_pecahan", title: "Pecahan dan Perpuluhan", note: "Menulis pecahan wajar (cth: 2/5) dan menukar pecahan persepuluh kepada nombor perpuluhan (0.1 hingga 0.9)." },
+                { id: "t2_wang", title: "Wang hingga RM100", note: "Operasi tambah, tolak, dan simpanan wang saku harian dalam lingkungan RM100." },
+                { id: "t2_masa", title: "Masa dan Waktu", note: "Membaca jam dalam gandaan 5 minit (cth: 4:25) serta mengenali sistem minit dan suku jam/setengah jam." },
+                { id: "t2_ukuran", title: "Ukuran Panjang, Jisim & Isi Padu", note: "Mengenali unit piawai rasmi meter (m), sentimeter (cm), kilogram (kg), gram (g), liter (l), dan mililiter (ml)." },
+                { id: "t2_bentuk", title: "Ruang & Bentuk", note: "Mengenal pasti bentangan bentuk 3D dan melukis bentuk asas 2D dengan ukuran bucu dan garisan yang tepat." },
+                { id: "t2_data", title: "Carta Palang", note: "Membaca maklumat daripada piktograf berskala dan carta palang mudah untuk menyelesaikan masalah harian." }
             ],
             3: [
-                { id: "3_countable", title: "Countable & Uncountable", desc: "Can you count it or not?", rules: "Use 'many' or 'few' for countable items. Use 'much' or 'little' for uncountable liquids or powders.", tips: "You can count individual apples, but you cannot count liquid water!", error: "Saying 'Too many water' instead of 'Too much water'.", summary: "Nouns split into item-based and mass-based categories.", examples: ["I have many pencils.", "There is too much sugar in my tea.", "Give me a little water."] },
-                { id: "3_articles", title: "Articles", desc: "Mastering 'The' versus 'A/An'.", rules: "Use 'the' for specific objects already mentioned, and 'a/an' for general introductory items.", tips: "Use 'the' when both you and the listener know the exact object!", error: "Saying 'I saw a moon' instead of 'I saw the moon'.", summary: "The indicates specific targets, while A/An signals general items.", examples: ["Pass me the blue book on your desk.", "I want to buy a computer.", "The sun is hot today."] },
-                { id: "3_comparative", title: "Comparative Adjectives", desc: "Advanced item comparisons.", rules: "Change the spelling carefully: 'heavy' becomes 'heavier', 'big' doubles the consonant to 'bigger'.", tips: "For long words, use 'more' instead of adding an '-er' suffix!", error: "Writing 'more bigger' or 'beautifuler'.", summary: "Spell check changes when scaling adjectives to comparatives.", examples: ["An elephant is bigger than a horse.", "This puzzle is more difficult than that one.", "My bag is heavier than yours."] },
-                { id: "3_superlative", title: "Superlative Adjectives", desc: "The top of the scale.", rules: "Use 'the' + adjective ending in '-est' (or 'most' for long words) to show the absolute top item.", tips: "Superlatives compare three or more items to find the ultimate one!", error: "Forgetting 'the' before superlatives, like 'He is tallest boy.'", summary: "Superlatives rank an absolute top item out of a group.", examples: ["Mount Everest is the highest mountain.", "She is the smartest student in class.", "This is the most interesting book."] },
-                { id: "3_adverbs", title: "Adverbs", desc: "Describing how actions happen.", rules: "Add '-ly' to adjectives to turn them into adverbs that describe how an action is performed.", tips: "Adverbs tell you *how* somebody did something!", error: "Saying 'He ran quick' instead of 'He ran quickly'.", summary: "Adverbs modify actions to show style, speed, or manner.", examples: ["The turtle walks slowly.", "She sang beautifully.", "He answered the question correctly."] },
-                { id: "3_pres_cont", title: "Present Continuous", desc: "What is happening right now.", rules: "Use am/is/are + verb ending in '-ing' to show actions currently in progress.", tips: "Look out for keys like 'now', 'at the moment', or 'Listen!'", error: "Forgetting the helping verb, like 'They running now.'", summary: "In-progress present activities require helper links and -ing endings.", examples: ["I am studying English right now.", "The dog is barking loudly.", "They are swimming in the lake."] },
-                { id: "3_past_cont", title: "Past Continuous", desc: "Interrupted past frames.", rules: "Use 'was' or 'were' + verb ending in '-ing' to show ongoing past backgrounds.", tips: "Often tracks what was happening when another action interrupted it!", error: "Using 'was' with plural groups, like 'They was working.'", summary: "Past context actions use was or were along with an -ing verb.", examples: ["I was sleeping when the phone rang.", "They were playing football at noon.", "She was writing a letter."] },
-                { id: "3_future", title: "Future Tense", desc: "Planning next moves.", rules: "Use 'will' + base verb or 'is/am/are going to' + base verb for upcoming events.", tips: "Keep the verb in its plain base form right after using 'will'!", error: "Writing 'I will going to school' or 'I will plays tomorrow.'", summary: "Future intents rely on will or going to followed by base verbs.", examples: ["We will visit the zoo tomorrow.", "I am going to buy a new book.", "It will rain later."] },
-                { id: "3_modal", title: "Modal Verbs", desc: "Permission and capabilities.", rules: "Use 'can' for ability or permission, and 'must' for strict obligations.", tips: "Modals are followed by base verbs without any extra suffix!", error: "Writing 'He can swims' instead of 'He can swim'.", summary: "Modals establish guidelines for permission, capability, and rules.", examples: ["I can swim across the pool.", "You must wash your hands before eating.", "Can I borrow your pencil?"] },
-                { id: "3_poss_pronouns", title: "Possessive Pronouns", desc: "Replacing owned items.", rules: "Use mine, yours, his, hers, ours, and theirs to replace noun descriptions entirely.", tips: "No noun follows a possessive pronoun! It stands alone.", error: "Writing 'This is mine book' instead of 'This book is mine.'", summary: "Possessive pronouns replace pronoun-noun combinations cleanly.", examples: ["This bag is mine.", "Is that pencil yours?", "The red bicycle is his."] },
-                { id: "3_conjunctions", title: "Conjunctions", desc: "Explaining reasons and options.", rules: "Use 'because' to show reasons and 'or' to present alternative choices.", tips: "Because answers the big question 'Why?'!", error: "Using 'because' without explaining a clear cause.", summary: "Because tracks root causes, while or handles options.", examples: ["I stayed home because it rained.", "Do you want tea or milk?", "He smiled because he won."] },
-                { id: "3_complex", title: "Complex Sentences", desc: "Connecting clauses smoothly.", rules: "Join an independent clause with a dependent clause using connectors like 'when' or 'if'.", tips: "If the 'if' clause comes first, insert a comma in the middle!", error: "Leaving a dependent clause hanging alone as a full sentence.", summary: "Complex clauses link situational ideas together dynamically.", examples: ["When the bell rings, we leave.", "If it rains, we will stay inside.", "I was happy when I saw my score."] },
-                { id: "3_direct_qs", title: "Direct Questions", desc: "Advanced question structures.", rules: "Invert standard structures by starting with helpers: Do, Does, Is, Are, or Did.", tips: "Does pairs with singular items; Do pairs with plural items!", error: "Saying 'Does they like pizza?' instead of 'Do they like pizza?'", summary: "Helpers invert standard structures to create direct questions.", examples: ["Do you play chess?", "Does she live here?", "Did you finish your work?"] },
-                { id: "3_review", title: "Grammar Review", desc: "Consolidating Year 3 skills.", rules: "Review nouns, adjectives, continuous tenses, and modals to test fluency.", tips: "Think back to all your past checkpoints to ace this review!", error: "Mixing up continuous tenses with simple tense habits.", summary: "Synthesize grammar rules to achieve true clarity.", examples: ["She is the fastest runner because she trains hard.", "I will call you when I arrive.", "There are many books here."] }
+                { id: "t3_nombor", title: "Nombor hingga 10 000", note: "Membaca, menulis, membanding nilai digit sehingga empat angka (Ribu). Pembundaran hingga ratus dan ribu terdekat." },
+                { id: "t3_operasi", title: "Operasi Asas Kombinasi", note: "Pengukuhan darab dan bahagi bagi sifir lanjutan (6, 7, 8, 9) serta operasi bergabung tambah-tolak." },
+                { id: "t3_pecahan", title: "Pecahan, Perpuluhan & Peratus", note: "Pecahan setara, pecahan wajar paling mudah, penambahan perpuluhan, dan pengenalan simbol peratus (%)." },
+                { id: "t3_wang", title: "Wang hingga RM10 000", note: "Menguruskan belanjawan peribadi, merekod simpanan dan pelaburan ringkas serta operasi tambah-tolak wang berskala besar." },
+                { id: "t3_masa", title: "Masa dan Kalendar", note: "Menukar unit antara jam, minit, saat serta membaca kalendar tahunan untuk menentukan hari dan tarikh khusus." },
+                { id: "t3_ukuran", title: "Pertukaran Unit Ukuran", note: "Operasi tambah dan tolak melibatkan panjang (m/cm), jisim (kg/g) dan isi padu cecair (l/ml) secara bersilang." },
+                { id: "t3_ruang", title: "Prisma dan Poligon", note: "Mengenali prisma segi tiga, prisma segi empat. Mengenal pasti poligon sekata: pentagon, heksagon, heptagon, oktagon." },
+                { id: "t3_data", title: "Carta Pai & Piktograf", note: "Menginterpretasi dan memindahkan maklumat daripada piktograf, carta palang, dan carta pai ringkas." }
             ],
             4: [
-                { id: "4_pres_perfect", title: "Present Perfect", desc: "Connecting the past to now.", rules: "Use have/has + Past Participle (Verb 3) for past events that matter right now.", tips: "Regular past forms use '-ed', but watch out for irregulars like 'eaten' or 'seen'!", error: "Saying 'I have ate breakfast' instead of 'I have eaten breakfast.'", summary: "Have/has combined with Verb 3 shows past events tied to the present.", examples: ["I have finished my homework.", "She has lived here for three years.", "They have already left."] },
-                { id: "4_past_perfect", title: "Past Perfect", desc: "The past before the past.", rules: "Use 'had' + Past Participle to show an action completed before another past event.", tips: "The older past action always takes the 'had' modifier!", error: "Using 'have' when describing chronological past event backdrops.", summary: "Had + Verb 3 clarifies timelines by showing which past event came first.", examples: ["The train had left when we arrived.", "I had eaten dinner before he called.", "She had cleaned the room."] },
-                { id: "4_passive_basic", title: "Passive Voice (Basic)", desc: "Shifting focus to the object.", rules: "Move the object to the front: Object + is/are + Past Participle + by + Subject.", tips: "Use passive voice when the object receiving the action matters most!", error: "Using base form verbs instead of past participles in passive structures.", summary: "Passive voice highlights the receiver of the action.", examples: ["The cake is baked by mother.", "The football is kicked by Adam.", "Windows are cleaned by them."] },
-                { id: "4_rel_pronouns", title: "Relative Pronouns", desc: "Linking clauses with pronouns.", rules: "Use 'who' for people, 'which' for things, and 'whose' to show ownership.", tips: "Relative pronouns help combine two sentences into a single smooth thought.", error: "Using 'which' to describe a person, like 'The boy which ran.'", summary: "Who, which, and whose link descriptions to nouns accurately.", examples: ["The girl who won is my cousin.", "The book which is on the table is fun.", "The man whose car broke down is here."] },
-                { id: "4_rel_clauses", title: "Relative Clauses", desc: "Adding descriptions directly.", rules: "Insert relative clauses right after target nouns to keep descriptions concise.", tips: "Keep the relative clause close to the noun it describes!", error: "Placing relative clauses too far from the noun being modified.", summary: "Relative clauses add context without starting a new sentence.", examples: ["The house that has a red door is mine.", "The teacher who helped me is kind.", "The cake which she made tasted sweet."] },
-                { id: "4_reported_basic", title: "Reported Speech (Basic)", desc: "Repeating what was said.", rules: "Shift present tense sentences back into the past when reporting what someone said.", tips: "Change 'says' to 'said', and shift present verbs into past forms!", error: "Forgetting to shift tenses, like 'He said he is tired' instead of 'was tired'.", summary: "Reported speech shifts present quotes into past narrative frames.", examples: ["He said that he was hungry.", "She told me that she loved reading.", "They said they were ready."] },
-                { id: "4_conditionals_basic", title: "Conditionals (Basic)", desc: "First conditional rule sets.", rules: "Use 'If' + Present Tense followed by 'will' + Base Verb to show real future possibilities.", tips: "The conditional clause sets up the rule, while the will clause shows the outcome!", error: "Using 'will' inside the 'if' clause, like 'If it will rain...'", summary: "First conditional frames map out logical future causes and results.", examples: ["If you study hard, you will pass.", "If it rains, we will stay home.", "We will celebrate if we win."] },
-                { id: "4_sva", title: "Subject-Verb Agreement", desc: "Matching subjects and verbs.", rules: "Singular subjects require singular verbs (with 's'). Plural subjects require plural verbs (no 's').", tips: "Don't let descriptive phrases between the subject and verb confuse you!", error: "Writing 'The group of boys are playing' instead of 'is playing'.", summary: "Verbs must match the core subject's number.", examples: ["The cat drinks milk.", "The cats drink milk.", "Everyone is happy today."] },
-                { id: "4_modal_adv", title: "Modal Verbs", desc: "Advice and possibilities.", rules: "Use 'should' for good advice and 'may' or 'might' for future possibilities.", tips: "Should offers helpful guidance, while may handles possibilities!", error: "Using 'should' as a strict obligation command like 'must'.", summary: "Advanced modals express varying levels of advice and certainty.", examples: ["You should read more books.", "It may rain this afternoon.", "He might join us later."] },
-                { id: "4_gerunds", title: "Gerunds", desc: "Turning verbs into nouns.", rules: "Add '-ing' to a verb to use it as a noun subject or object in a sentence.", tips: "Gerunds look like actions but function as things or concepts!", error: "Confusing active continuous verbs with gerund subjects.", summary: "Gerunds allow actions to function directly as noun concepts.", examples: ["Swimming is great exercise.", "I love reading stories.", "Smoking is bad for health."] },
-                { id: "4_infinitives", title: "Infinitives", desc: "Using 'to' + base verb.", rules: "Use 'to' followed by the plain base form of a verb after specific actions or adjectives.", tips: "Never add suffixes like '-ed' or '-ing' to an infinitive verb!", error: "Writing 'He decided to went home' instead of 'to go home'.", summary: "Infinitives state purposes or intents cleanly using base verbs.", examples: ["I want to learn English.", "It is easy to solve this.", "She ran to catch the bus."] },
-                { id: "4_prefixes", title: "Prefixes", desc: "Changing meanings at the start.", rules: "Add prefixes like 'un-', 'dis-', or 'im-' to the front of a word to create its opposite meaning.", tips: "Prefixes change word meanings without changing their word type!", error: "Spelling prefixes wrong when adding them to baseline roots.", summary: "Front-end modifiers easily create opposite meanings.", examples: ["This room is untidy.", "I disagree with you.", "It is impossible to fly."] },
-                { id: "4_suffixes", title: "Suffixes", desc: "Changing word types at the end.", rules: "Add suffixes like '-ful', '-less', or '-ment' to modify meaning or change word types.", tips: "Suffixes often turn active verbs into descriptions or nouns!", error: "Confusing descriptive suffixes with noun endings.", summary: "End-of-word extensions safely transform structural word classes.", examples: ["Be careful with that glass.", "The puppy is completely harmless.", "They shouted in excitement."] },
-                { id: "4_practice", title: "Grammar Practice", desc: "Consolidating Year 4 skills.", rules: "Apply perfect tenses, subject-verb agreement, and relative pronouns to clear real tests.", tips: "Double-check your verb forms and matching subjects to ace this practice!", error: "Rushing past tense markers in mixed review questions.", summary: "Practice reinforces structural accuracy across advanced items.", examples: ["He who works hard has always achieved success.", "If she goes, I will go too.", "The car was repaired by dad."] }
+                { id: "t4_nombor", title: "Nombor Bulat hingga 100 000", note: "Nilai tempat puluh ribu. Mengenali nombor perdana di bawah 100 dan pola susunan nombor geometri." },
+                { id: "t4_operasi", title: "Operasi Bergabung", note: "Menyelesaikan ayat matematik melibatkan penambahan, penolakan, pendaraban, dan pembahagian bercampur mengikut tertib BODMAS." },
+                { id: "t4_pecahan", title: "Pecahan, Perpuluhan & Peratus", note: "Menukar pecahan bercampur kepada pecahan tidak wajar, dan pengiraan peratusan daripada kumpulan kuantiti." },
+                { id: "t4_wang", title: "Mata Wang Asing & Instrumen Pembayaran", note: "Mengenali mata wang utama dunia (ASEAN) dan instrumen pembayaran elektronik (kad kredit, e-wallet, cek)." },
+                { id: "t4_masa", title: "Sistem 24 Jam & Tempoh", note: "Menukar sistem 12 jam kepada sistem 24 jam (cth: Jam 1430) serta mengira tempoh masa (masa tamat tolak masa mula)." },
+                { id: "t4_ukuran", title: "Panjang, Jisim & Isi Padu Lanjutan", note: "Melibatkan pendaraban dan pembahagian unit ukuran dengan nombor satu atau dua digit, termasuk perpuluhan." },
+                { id: "t4_ruang", title: "Sudut, Garis Selari & Perimeter", note: "Mengenal sudut tegak, tirus, cakah. Mengira perimeter bentuk gabungan 2D, luas segi empat, dan isi padu kubus." },
+                { id: "t4_koordinat", title: "Koordinat, Nisbah & Kadaran", note: "Membaca koordinat pada satah Cartesian (paksi-x dan paksi-y), menulis nisbah 1:n, dan kaedah unitari." },
+                { id: "t4_data", title: "Carta Palang Berkembar", note: "Membina dan mentafsir carta palang berkembar serta menyelesaikan masalah interpretasi data harian." }
             ],
             5: [
-                { id: "5_perfect", title: "Perfect Tenses", desc: "Advanced perfect structures.", rules: "Master present perfect continuous: have/has + been + verb ending in '-ing'.", tips: "Use this to describe actions that started in the past and are still going on right now!", error: "Omitting 'been' from continuous perfect frameworks.", summary: "Continuous perfect tracks ongoing duration links from past to present.", examples: ["I have been studying for two hours.", "She has been coding all night.", "They have been running outside."] },
-                { id: "5_passive", title: "Passive Voice", desc: "Advanced passive structures.", rules: "Convert complex past, continuous, and modal sentences into passive forms safely.", tips: "Keep the original sentence's tense intact when moving things around!", error: "Changing the baseline tense while converting to passive voice.", summary: "Advanced passive conversions preserve tense while shifting focus.", examples: ["The letter was being written by Sarah.", "Homework must be completed by you.", "The house was built in 1990."] },
-                { id: "5_complex", title: "Complex Sentences", desc: "Advanced subordinating connectors.", rules: "Use advanced subordinating conjunctions like 'although', 'unless', and 'whereas' to join ideas.", tips: "Although shows surprises, while unless sets up specific negative conditions!", error: "Using 'unless' along with an extra negative modifier, creating a double negative.", summary: "Advanced conjunctions create nuanced logical relationships between clauses.", examples: ["Although it was raining, they played.", "You will fail unless you study hard.", "He loves math, whereas she loves art."] },
-                { id: "5_relative", title: "Relative Clauses", desc: "Defining vs Non-defining forms.", rules: "Use commas for non-defining clauses that add extra, non-essential details.", tips: "If removing the clause changes the core meaning, do not use commas!", error: "Using 'that' inside non-defining relative clauses.", summary: "Commas separate non-essential background details from core concepts.", examples: ["My brother, who lives in London, is a chef.", "The book that I read yesterday was amazing.", "Ipoh, which is in Perak, is famous for food."] },
-                { id: "5_reported", title: "Reported Speech", desc: "Reporting advanced questions.", rules: "Use 'if' or 'whether' when reporting yes/no questions, shifting tenses back.", tips: "Remove question marks and helper verbs like 'do' when reporting questions!", error: "Keeping question word order in reported statements.", summary: "Reporting questions requires shifting word order into statements.", examples: ["She asked if I had finished my work.", "He inquired where I lived.", "They asked whether he would come."] },
-                { id: "5_conditionals", title: "Conditionals", desc: "Second conditional structures.", rules: "Use 'If' + Past Tense followed by 'would' + Base Verb to describe imaginary situations.", tips: "Use 'were' instead of 'was' for all subjects in imaginary structures!", error: "Using 'would' inside the 'if' clause, like 'If I would be rich...'", summary: "Second conditionals outline imaginary or hypothetical ideas safely.", examples: ["If I were a king, I would help everyone.", "She would buy a car if she had money.", "If they practiced, they would win."] },
-                { id: "5_phrasal", title: "Phrasal Verbs", desc: "Combining actions with positions.", rules: "Idiomatic expressions combining a baseline verb with a preposition to create new meanings.", tips: "Look at the context puzzle to figure out the phrasal meaning!", error: "Translating individual components literally instead of reading them as a unit.", summary: "Verb-preposition pairs create unique, idiom-like action meanings.", examples: ["Please turn off the noisy radio.", "Do not give up on your dreams.", "We ran out of milk this morning."] },
-                { id: "5_idioms", title: "Idioms", desc: "Native figurative phrases.", rules: "Phrases where the actual meaning is completely different from the literal words.", tips: "Idioms add color and native flair to your creative writing!", error: "Taking figurative idiomatic phrases literally.", summary: "Idioms are expressions used to convey deeper, figurative meanings.", examples: ["Passing the test was a piece of cake.", "It is raining cats and dogs outside.", "Break a leg at your concert tonight!"] },
-                { id: "5_linking", title: "Linking Words", desc: "Structuring text arguments.", rules: "Use transitional words like 'furthermore', 'however', and 'therefore' to connect ideas.", tips: "Always place a comma directly after these linking words at the start of a sentence!", error: "Using 'however' without a comma or proper punctuation.", summary: "Transitions build clear structural flow between paragraphs and sentences.", examples: ["I was tired; however, I finished the job.", "Furthermore, reading improves grammar.", "Therefore, we must protect nature."] },
-                { id: "5_clauses", title: "Clauses", desc: "Parsing text components.", rules: "Identify noun, adjective, and adverbial clauses working inside complex sentences.", tips: "Adverbial clauses explain when, where, why, or how actions occur!", error: "Confusing independent clauses with dependent pieces.", summary: "Mastering clauses is key to building advanced sentences.", examples: ["He left after the party ended.", "What you said made me very happy.", "The town where I was born is quiet."] },
-                { id: "5_formal", title: "Formal Writing Grammar", desc: "Writing academic prose.", rules: "Avoid informal slang, contractions like 'don't', and personal shortcuts in formal essays.", tips: "Write out contractions fully (use 'do not' instead of 'don't') in formal essays!", error: "Using casual text speak or shortcuts in formal letters.", summary: "Formal tasks demand complete words and structured passive layouts.", examples: ["The research was completed successfully.", "We do not accept late submissions.", "Dear Sir, I am writing to inform you."] },
-                { id: "5_editing", title: "Grammar Editing", desc: "Locating structural flaws.", rules: "Proofread paragraphs systematically to fix errors in tense, subject-verb agreement, and punctuation.", tips: "Read text sentence by sentence to check subject-verb match-ups!", error: "Skimming over small tense inconsistencies while editing.", summary: "Editing fixes hidden structural mistakes within paragraphs.", examples: ["He go to the store yesterday (Incorrect) -> He went to the store yesterday (Correct)."] },
-                { id: "5_mixed", title: "Mixed Grammar", desc: "Handling random rule setups.", rules: "Handle rapid shifts between active, passive, perfect, and conditional structures.", tips: "Identify the tense and timeframe of the prompt before answering!", error: "Applying the wrong tense rule in mixed challenge formats.", summary: "Mixed evaluations build flexibility by blending multiple grammar rules.", examples: ["By the time she arrives, we will have been waiting for hours."] },
-                { id: "5_revision", title: "Revision", desc: "Consolidating Year 5 skills.", rules: "Review all advanced connectors, perfect variations, and conditionals to build mastery.", tips: "Reviewing your weak topics is the fastest way to get a perfect score!", error: "Skipping over tricky second conditional rules during review.", summary: "Comprehensive reviews build confidence ahead of final tests.", examples: ["Unless you practice your grammar rules regularly, you will not master them."] }
+                { id: "t5_nombor", title: "Nombor hingga 1 000 000", note: "Nilai tempat ratus ribu. Mengaplikasi pembundaran skala penuh dan mengenali anggaran kuantiti berasaskan rujukan nyata." },
+                { id: "t5_operasi", title: "Operasi Bergabung Lanjutan", note: "Operasi bercampur yang melibatkan tanda kurung dan nombor perpuluhan sehingga sejuta dengan pantas." },
+                { id: "t5_pecahan", title: "Operasi Pecahan & Peratus", note: "Pendaraban pecahan wajar dengan pecahan bercampur. Menukar peratus kepada perpuluhan dan sebaliknya." },
+                { id: "t5_wang", title: "Faedah, Dividen & Pelan Kewangan", note: "Memahami faedah mudah, faedah kompaun, konsep dividen pelaburan, serta penyediaan bajet kewangan keluarga." },
+                { id: "t5_masa", title: "Zon Masa & Tukar Unit", note: "Menukar unit abad, dekad, tahun, bulan, hari. Pengenalan perbezaan zon masa antara bandar-bandar dunia dunia." },
+                { id: "t5_ukuran", title: "Pertukaran Unit Perpuluhan", note: "Menukar unit panjang, jisim, dan isi padu dalam bentuk pecahan atau perpuluhan (cth: 1.5 kg = 1500 g)." },
+                { id: "t5_ruang", title: "Luas Permukaan & Sudut Pedalaman", note: "Mengukur sudut pada poligon sekata, mencari luas permukaan bentuk 3D gabungan dan isi padu ruang kosong." },
+                { id: "t5_koordinat", title: "Nisbah, Kadaran & Koordinat Satah", note: "Menentukan jarak mengufuk dan mencancang antara dua titik koordinat, nisbah kuantiti berskala besar." },
+                { id: "t5_data", title: "Mod, Median, Min & Julat", note: "Asas analisis statistik: mencari nilai kekerapan tertinggi (mod), nilai tengah (median), purata (min), dan perbezaan (julat)." }
             ],
             6: [
-                { id: "6_revision", title: "Complete Grammar Revision", desc: "Full Primary syllabus recap.", rules: "Review all primary rules, from basic singular/plural nouns up to complex conditional systems.", tips: "Treat every question as an opportunity to test your foundational skills!", error: "Overlooking basic rules while focusing too much on advanced structures.", summary: "Mastering the basics forms a solid foundation for advanced writing.", examples: ["She has been reading the book that I gave her yesterday."] },
-                { id: "6_advanced", title: "Advanced Sentence Structures", desc: "Compound-complex configurations.", rules: "Combine multiple independent and dependent clauses into cohesive sentences.", tips: "Use punctuation like semicolons and commas to balance long sentences!", error: "Creating run-on sentences by piling clauses together without proper punctuation.", summary: "Advanced structures combine multiple ideas into one clear sentence.", examples: ["Although he was tired, he finished his work, and then he went to sleep."] },
-                { id: "6_active_passive", title: "Active & Passive Voice", desc: "Strategic voice switching.", rules: "Choose active voice for direct action, and passive voice to emphasize the object or result.", tips: "Active voice keeps your writing energetic; passive voice keeps it objective!", error: "Using passive voice excessively, making writing sound wordy and weak.", summary: "Strategic voice selection changes the focus of your writing.", examples: ["The chef prepared the food (Active). The food was prepared by the chef (Passive)."] },
-                { id: "6_tenses_rev", title: "Tenses Review", desc: "Mastering all 12 time frames.", rules: "Differentiate accurately between simple, continuous, perfect, and perfect continuous tenses.", tips: "Check the timeline of the action to choose the perfect verb tense!", error: "Shifting tenses inconsistently within a single paragraph.", summary: "Tense consistency keeps your timelines clear and logical.", examples: ["I was working on my project while my brother was playing games."] },
-                { id: "6_reported_adv", title: "Reported Speech", desc: "Advanced changes and shifts.", rules: "Shift pronouns, time expressions (e.g., 'tomorrow' to 'the next day'), and tenses accurately.", tips: "Remember to change 'here' to 'there' and 'this' to 'that' in reported speech!", error: "Forgetting to change time markers like 'yesterday' when reporting speech.", summary: "Advanced reported speech requires shifting tenses, pronouns, and time markers.", examples: ["She said she had visited Malacca the previous week."] },
-                { id: "6_conditionals_all", title: "Conditionals", desc: "Third conditional frameworks.", rules: "Use 'If' + Past Perfect followed by 'would have' + Past Participle for past regrets.", tips: "The third conditional talks about imaginary past events that didn't actually happen!", error: "Mixing up second and third conditional verb forms in the same sentence.", summary: "Third conditionals evaluate alternative past outcomes and regrets.", examples: ["If I had studied harder, I would have passed the exam."] },
-                { id: "6_relative_adv", title: "Relative Clauses", desc: "Omitting relative pronouns safely.", rules: "Drop the relative pronoun (who/which/that) when it acts as the object of the clause.", tips: "You can safely omit the pronoun if a new subject immediately follows it!", error: "Omitting the pronoun when it functions as the core subject of the clause.", summary: "Dropping object pronouns makes your writing sound more natural.", examples: ["The movie I watched last night was scary (Pronoun 'that' omitted)."] },
-                { id: "6_error_corr", title: "Error Correction", desc: "Advanced editing strategies.", rules: "Identify and correct subtle grammar, spelling, and structural mistakes in texts.", tips: "Scan specifically for subject-verb agreement and parallel structures!", error: "Missing subtle tense mismatches while editing sentences.", summary: "Advanced error correction builds an eye for clean writing.", examples: ["Neither of the options are good (Incorrect) -> Neither of the options is good (Correct)."] },
-                { id: "6_writing_gram", title: "Grammar in Writing", desc: "Applying rules to narratives.", rules: "Use a variety of sentence structures and precise grammar to write interesting essays.", tips: "Mix short, punchy sentences with longer complex ones to keep readers engaged!", error: "Using repetitive sentence patterns, making your writing sound boring.", summary: "Varied sentence structures make writing engaging and rhythmic.", examples: ["Walking through the forest, the girl discovered an old, abandoned cabin."] },
-                { id: "6_upsa", title: "Grammar for UPSA-style questions", desc: "Exam-format practice preparation.", rules: "Practice specific exam formats like multiple-choice cloze tests and text correction.", tips: "Read the entire context paragraph before picking an answer choice!", error: "Choosing answers based on sound alone without checking the underlying rule.", summary: "Targeted practice builds test-taking confidence and accuracy.", examples: ["Choose the most suitable word to fill in the blank space accurately."] },
-                { id: "6_mixed_master", title: "Mixed Grammar", desc: "Elite mixed rule integrations.", rules: "Solve advanced grammar challenges that combine multiple complex rules simultaneously.", tips: "Break down long sentences into individual clauses to analyze them easily!", error: "Getting overwhelmed by complex questions with multiple rules.", summary: "Mastering mixed rules develops native-like fluency.", examples: ["Had I known about the rules, I would have behaved differently."] },
-                { id: "6_hots", title: "Higher Order Thinking Grammar", desc: "Analytical grammar usage.", rules: "Analyze how subtle changes in grammar completely alter sentence meanings.", tips: "Pay close attention to how punctuation shifts the focus of a sentence!", error: "Assuming different grammatical structures always mean the exact same thing.", summary: "Analytical grammar explores how structure creates meaning.", examples: ["He stopped smoking (Quit habit) vs He stopped to smoke (Paused to take a break)."] },
-                { id: "6_final_rev", title: "Final Revision", desc: "Ultimate primary mastery test.", rules: "Run a full simulation of all grammar concepts to ensure complete readiness.", tips: "Treat this final review as your ultimate check before moving on!", error: "Rushing through foundational questions in the final review.", summary: "Final reviews ensure you have mastered all core concepts.", examples: ["We have successfully reviewed the complete primary grammar syllabus."] },
-                { id: "6_master", title: "Master Grammar", desc: "Achieving top fluency.", rules: "Demonstrate elite mastery of English grammar across all primary school topics.", tips: "Consistent practice is the secret to maintaining top fluency!", error: "Stopping practice after achieving a single perfect score.", summary: "True grammar mastery unlocks confident communication skills.", examples: ["You are now fully equipped with advanced English grammar skills!"] }
+                { id: "t6_nombor", title: "Nombor Bulat & Operasi hingga 10 Juta", note: "Melibatkan nombor perpuluhan juta (cth: 2.5 juta) dan pecahan juta (cth: 1/4 juta). Pengiraan julat besar." },
+                { id: "t6_operasi", title: "Operasi Bergabung Juta", note: "Menyelesaikan masalah harian melibatkan operasi bergabung tambah, tolak, darab, bahagi kuantiti bernilai juta." },
+                { id: "t6_pecahan", title: "Pembahagian Pecahan", note: "Membahagi pecahan wajar dengan nombor bulat atau pecahan wajar yang lain secara teratur (songsangkan pembahagi)." },
+                { id: "t6_wang", title: "Untung, Rugi, Diskaun, Cukai & Insurans", note: "Analisis perniagaan: mengira harga kos, harga jual, untung/rugi bersih, diskaun peratusan, cukai perkhidmatan (SST), dan kepentingan insurans." },
+                { id: "t6_masa", title: "Zon Masa Antarabangsa Lanjutan", note: "Mengira masa ketibaan penerbangan merentasi pelbagai garis meridian bumi berdasarkan perbezaan waktu GMT." },
+                { id: "t6_ukuran", title: "Penyelesaian Masalah Ukuran Integrasi", note: "Menyelesaikan masalah reka bentuk/sains harian yang menggabungkan dimensi panjang, berat, dan cecair serentak." },
+                { id: "t6_ruang", title: "Poligon Sekata & Luas Sektor", note: "Melukis poligon sekata menggunakan protraktor, mengira sudut luaran, serta mengira luas satah kompleks bercampur." },
+                { id: "t6_koordinat", title: "Nisbah, Kadaran & Satah Cartesian", note: "Menentukan nisbah antara dua kuantiti berasaskan situasi realistik dan penyelesaian skala peta." },
+                { id: "t6_data", title: "Kebarangkalian & Pengurusan Data", note: "Menentukan kebarangkalian suatu peristiwa (mustahil, kecil kemungkinan, sama kemungkinan, besar kemungkinan, pasti)." }
             ]
         };
 
-        // --- AVATAR ENGINE GRAPHICS DATABASE (INLINE SVGs) ---
         const AVATARS = [
-            `<svg viewBox="0 0 128 128" class="w-full h-full"><circle cx="64" cy="64" r="60" fill="#FF6B6B"/><circle cx="45" cy="50" r="6" fill="#FFF"/><circle cx="83" cy="50" r="6" fill="#FFF"/><circle cx="45" cy="50" r="3" fill="#000"/><circle cx="83" cy="50" r="3" fill="#000"/><path d="M40 80 Q64 105 88 80" stroke="#FFF" stroke-width="6" fill="none" stroke-linecap="round"/><circle cx="30" cy="40" r="8" fill="#FFE066"/><circle cx="98" cy="40" r="8" fill="#FFE066"/></svg>`,
-            `<svg viewBox="0 0 128 128" class="w-full h-full"><circle cx="64" cy="64" r="60" fill="#4DABF7"/><rect x="35" y="30" width="58" height="30" rx="15" fill="#FFF"/><circle cx="50" cy="45" r="5" fill="#000"/><circle cx="78" cy="45" r="5" fill="#000"/><path d="M48 85 Q64 70 80 85" stroke="#FFF" stroke-width="5" fill="none" stroke-linecap="round"/><path d="M20 64 L10 64 M108 64 L118 64" stroke="#FFE066" stroke-width="4"/></svg>`,
-            `<svg viewBox="0 0 128 128" class="w-full h-full"><circle cx="64" cy="64" r="60" fill="#37B24D"/><path d="M34 30 L44 50 L24 45 Z" fill="#2B8A3E"/><path d="M94 30 L104 45 L84 50 Z" fill="#2B8A3E"/><circle cx="48" cy="60" r="7" fill="#000"/><circle cx="80" cy="60" r="7" fill="#000"/><ellipse cx="64" cy="88" rx="14" ry="8" fill="#FFF"/></svg>`,
-            `<svg viewBox="0 0 128 128" class="w-full h-full"><circle cx="64" cy="64" r="60" fill="#F59F00"/><rect x="24" y="55" width="80" height="40" rx="10" fill="#343A40"/><circle cx="48" cy="75" r="6" fill="#63E6BE"/><circle cx="80" cy="75" r="6" fill="#63E6BE"/><path d="M64 20 L64 45" stroke="#F59F00" stroke-width="6"/><circle cx="64" cy="15" r="8" fill="#E63946"/></svg>`,
-            `<svg viewBox="0 0 128 128" class="w-full h-full"><circle cx="64" cy="64" r="60" fill="#9C27B0"/><path d="M30 40 Q64 15 98 40" stroke="#E040FB" stroke-width="8" fill="none"/><circle cx="48" cy="65" r="6" fill="#FFF"/><circle cx="80" cy="65" r="6" fill="#FFF"/><circle cx="48" cy="65" r="3" fill="#9C27B0"/><circle cx="80" cy="65" r="3" fill="#9C27B0"/><path d="M45 90 Q64 105 83 90" stroke="#FFF" stroke-width="4" fill="none"/></svg>`,
-            `<svg viewBox="0 0 128 128" class="w-full h-full"><circle cx="64" cy="64" r="60" fill="#FF922B"/><polygon points="64,25 74,45 96,45 78,58 85,80 64,68 43,80 50,58 32,45 54,45" fill="#FFF"/><circle cx="52" cy="50" r="4" fill="#000"/><circle cx="76" cy="50" r="4" fill="#000"/><path d="M54 62 Q64 70 74 62" stroke="#000" stroke-width="2" fill="none"/></svg>`
+            "https://api.dicebear.com/7.x/bottts/svg?seed=Ahmad",
+            "https://api.dicebear.com/7.x/bottts/svg?seed=Siti",
+            "https://api.dicebear.com/7.x/bottts/svg?seed=Zafuan",
+            "https://api.dicebear.com/7.x/bottts/svg?seed=Zara",
+            "https://api.dicebear.com/7.x/bottts/svg?seed=Mia"
         ];
 
-        // --- STATE MANAGEMENT ENGINE ---
-        let STATE = {
-            profiles: {},
-            currentProfileId: null,
-            activeView: "welcome",
-            theme: "light",
-            audioEnabled: true,
-            currentQuiz: null,
-            viewHistory: []
-        };
-
-        // --- INITIALIZATION & LOCALSTORAGE SYNC ---
-        function initApp() {
-            const savedState = localStorage.getItem("BIJAK_GRAMMAR_STATE");
-            if (savedState) {
-                try {
-                    const parsed = JSON.parse(savedState);
-                    STATE.profiles = parsed.profiles || {};
-                    STATE.currentProfileId = parsed.currentProfileId || null;
-                    STATE.theme = parsed.theme || "light";
-                    STATE.audioEnabled = parsed.audioEnabled !== undefined ? parsed.audioEnabled : true;
-                } catch (e) {
-                    console.error("State recovery error, resetting fallback system data.", e);
-                }
-            }
-            applyTheme();
+        // Screen Navigator
+        function showScreen(screenId) {
+            playSound('click');
+            document.querySelectorAll('main > section').forEach(s => s.classList.add('hidden'));
+            document.getElementById(`screen-${screenId}`).classList.remove('hidden');
             
-            if (STATE.currentProfileId && STATE.profiles[STATE.currentProfileId]) {
-                navigate("home");
-            } else {
-                navigate("welcome");
+            // Adjust conditional UI elements
+            if(screenId === 'dashboard') {
+                document.getElementById('current-child-tag').classList.add('hidden');
+            } else if (window.selectedChildId && window.userData.children[window.selectedChildId]) {
+                const child = window.userData.children[window.selectedChildId];
+                const tag = document.getElementById('current-child-tag');
+                tag.innerText = `${child.name} (T${child.year})`;
+                tag.classList.remove('hidden');
             }
+            window.scrollTo(0,0);
         }
 
-        function saveState() {
-            localStorage.setItem("BIJAK_GRAMMAR_STATE", JSON.stringify({
-                profiles: STATE.profiles,
-                currentProfileId: STATE.currentProfileId,
-                theme: STATE.theme,
-                audioEnabled: STATE.audioEnabled
-            }));
+        // Toggle Application Themes
+        function toggleTheme(isDark) {
+            playSound('click');
+            document.body.setAttribute('data-theme', isDark ? 'night' : 'cupcake');
         }
 
-        function applyTheme() {
-            if (STATE.theme === "dark") {
-                document.documentElement.classList.add("dark");
-            } else {
-                document.documentElement.classList.remove("dark");
-            }
-        }
-
-        // --- GLOBAL NAVIGATION SYSTEMS ---
-        function navigate(viewName, appendToHistory = true) {
-            if (appendToHistory && STATE.activeView !== viewName) {
-                STATE.viewHistory.push(STATE.activeView);
-            }
-            STATE.activeView = viewName;
+        // Dashboard Rendering Interface
+        function renderDashboard() {
+            document.getElementById('dash-user-name').innerText = window.userData.name || 'Pengguna';
             
-            // Layout adjustments based on view context
-            const header = document.getElementById("global-header");
-            const nav = document.getElementById("bottom-nav");
+            const listContainer = document.getElementById('profiles-list');
+            listContainer.innerHTML = '';
             
-            if (["welcome", "create_profile"].includes(viewName)) {
-                header.classList.add("hidden");
-                nav.classList.add("hidden");
-            } else {
-                header.classList.remove("hidden");
-                updateHeaderUI();
+            const children = window.userData.children || {};
+            const childIds = Object.keys(children);
+            
+            childIds.forEach(id => {
+                const child = children[id];
+                const isActive = window.selectedChildId === id;
+                const card = document.createElement('div');
+                card.className = `card p-3 border-2 rounded-2xl cursor-pointer flex flex-row items-center gap-2 transition-all ${isActive ? 'border-primary bg-primary/10 shadow-md' : 'border-base-300 bg-base-100'}`;
+                card.onclick = () => selectChildProfile(id);
                 
-                if (["home", "topics", "challenges", "profile"].includes(viewName)) {
-                    nav.classList.remove("hidden");
-                    updateBottomNavUI(viewName);
-                } else {
-                    nav.classList.add("hidden");
-                }
-            }
-
-            // Route execution
-            const container = document.getElementById("view-container");
-            container.scrollTop = 0;
-            
-            switch(viewName) {
-                case "welcome": renderWelcomeView(container); break;
-                case "create_profile": renderCreateProfileView(container); break;
-                case "home": renderHomeView(container); break;
-                case "topics": renderTopicsView(container); break;
-                case "challenges": renderChallengesView(container); break;
-                case "profile": renderProfileView(container); break;
-                case "lesson": renderLessonView(container); break;
-                case "quiz": renderQuizView(container); break;
-                case "quiz_result": renderQuizResultView(container); break;
-                case "achievements": renderAchievementsView(container); break;
-                case "progress": renderProgressDetailsView(container); break;
-                case "settings": renderSettingsView(container); break;
-            }
-        }
-
-        document.getElementById("btn-back-nav").addEventListener("click", () => {
-            if (STATE.viewHistory.length > 0) {
-                const prev = STATE.viewHistory.pop();
-                navigate(prev, false);
-            } else {
-                navigate("home");
-            }
-        });
-
-        function updateHeaderUI() {
-            const profile = STATE.profiles[STATE.currentProfileId];
-            if (!profile) return;
-            document.getElementById("header-stars").innerText = profile.stars || 0;
-            const avatarBox = document.getElementById("header-avatar-container");
-            if (profile.customPhoto) {
-                avatarBox.innerHTML = `<img src="${profile.customPhoto}" class="w-full h-full object-cover rounded-full">`;
-            } else {
-                avatarBox.innerHTML = AVATARS[profile.avatarIndex || 0];
-            }
-            
-            // Simple logic for subheadings
-            if (STATE.activeView === "lesson" && STATE.currentLesson) {
-                document.getElementById("header-title").innerText = STATE.currentLesson.title;
-                document.getElementById("header-subtitle").innerText = `Year ${profile.year} • Lesson`;
-            } else if (STATE.activeView === "quiz" && STATE.currentQuiz) {
-                document.getElementById("header-title").innerText = "Quiz Mode";
-                document.getElementById("header-subtitle").innerText = STATE.currentQuiz.topicTitle;
-            } else {
-                document.getElementById("header-title").innerText = "Bijak Grammar";
-                document.getElementById("header-subtitle").innerText = `Hello, ${profile.name}!`;
-            }
-        }
-
-        function updateBottomNavUI(activeTarget) {
-            document.querySelectorAll(".nav-item").forEach(btn => {
-                if (btn.getAttribute("data-target") === activeTarget) {
-                    btn.className = "nav-item flex flex-col items-center gap-0.5 text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-slate-700/50 px-3 py-1.5 rounded-xl transition-all";
-                } else {
-                    btn.className = "nav-item flex flex-col items-center gap-0.5 text-slate-400 dark:text-slate-500 px-3 py-1.5 rounded-xl transition-all";
-                }
-            });
-        }
-
-        document.querySelectorAll(".nav-item").forEach(btn => {
-            btn.addEventListener("click", (e) => {
-                const target = e.currentTarget.getAttribute("data-target");
-                navigate(target);
-            });
-        });
-
-        document.getElementById("header-avatar-container").addEventListener("click", () => {
-            navigate("profile");
-        });
-
-        // --- AUDIO ENGINE ---
-        function speakText(text) {
-            if (!STATE.audioEnabled) return;
-            if ('speechSynthesis' in window) {
-                window.speechSynthesis.cancel();
-                const utterance = new SpeechSynthesisUtterance(text);
-                utterance.lang = 'en-US';
-                utterance.rate = 0.85; // Natural speed for kids
-                window.speechSynthesis.speak(utterance);
-            }
-        }
-
-        // --- PROCEDURAL GENERATOR FOR THE SMART QUESTION ENGINE ---
-        function generateProceduralQuestions(topicId, year, count = 15) {
-            let list = [];
-            // Seed base dictionary mapping variations to create dynamic programmatic question banks
-            const basePool = {
-                "1_alphabet": [
-                    { q: "Which one is a capital letter?", t: "mcq", o: ["A", "b", "c", "d"], a: "A" },
-                    { q: "Complete the alphabet sequence: A, B, C, __", t: "blank", a: "D", ex: "D completes the sequence." },
-                    { q: "Is 'e' a capital letter?", t: "tf", o: ["True", "False"], a: "False" },
-                    { q: "Choose the correct small letter for 'G'.", t: "mcq", o: ["g", "q", "p", "d"], a: "g" },
-                    { q: "Find the letter that matches with 'Apple'.", t: "word", o: ["A", "B", "M", "Z"], a: "A" }
-                ],
-                "1_capital": [
-                    { q: "Choose the correct sentence.", t: "sentence", o: ["I love my mother.", "i love my mother.", "I love My mother."], a: "I love my mother." },
-                    { q: "Fix the mistake: my name is Adam.", t: "correction", a: "My name is Adam.", orig: "my name is Adam." },
-                    { q: "Which word needs a capital letter in: 'we live in malaysia.'", t: "mcq", o: ["we and malaysia", "live", "in", "none"], a: "we and malaysia" }
-                ],
-                "1_nouns": [
-                    { q: "Which word is a common noun representing a place?", t: "mcq", o: ["school", "happy", "run", "beautiful"], a: "school" },
-                    { q: "Identify the object noun: 'The blue pen is on my table.'", t: "word", o: ["pen", "blue", "on", "is"], a: "pen" }
-                ],
-                "default": [
-                    { q: "Select the grammatically correct option.", t: "mcq", o: ["They are learning English.", "They is learning English.", "They am learning English."], a: "They are learning English." },
-                    { q: "True or False: We use full stops at the start of sentences.", t: "tf", o: ["True", "False"], a: "False" },
-                    { q: "Fix the missing word: She ____ a bright student.", t: "blank", a: "is" }
-                ]
-            };
-
-            let source = basePool[topicId] || basePool["default"];
-            
-            // Programmatic generation logic to scale questions to exactly 15 without duplicates
-            for (let i = 0; i < count; i++) {
-                let template = source[i % source.length];
-                let item = JSON.parse(JSON.stringify(template)); // deep clone
-                
-                // Add variety modifiers dynamically based on iterations
-                if (i >= source.length) {
-                    item.q += ` (Set ${Math.floor(i / source.length) + 1})`;
-                }
-                
-                // Assign a default fallback archetype if missing
-                if (!item.t) item.t = "mcq";
-                if (!item.o) item.o = [item.a, "Option X", "Option Y", "Option Z"];
-                
-                // Set structural standard rules explanations
-                item.rule = item.ex || "Follow KSSR grammar compliance tracking guidelines.";
-                item.msg = ["Excellent!", "Great Job!", "Keep Going!", "Fantastic!", "Almost There!"][i % 5];
-                
-                // Fisher-Yates array shuffling for dynamic answer positions
-                if (item.o && item.o.length > 1) {
-                    for (let j = item.o.length - 1; j > 0; j--) {
-                        const k = Math.floor(Math.random() * (j + 1));
-                        [item.o[j], item.o[k]] = [item.o[k], item.o[j]];
-                    }
-                }
-                list.push(item);
-            }
-            
-            // Shuffle final question output sequence
-            for (let j = list.length - 1; j > 0; j--) {
-                const k = Math.floor(Math.random() * (j + 1));
-                [list[j], list[k]] = [list[k], list[j]];
-            }
-            return list;
-        }
-
-        // --- SCREEN VIEW RENDERING ENGINES ---
-
-        function renderWelcomeView(c) {
-            c.innerHTML = `
-                <div class="flex-1 flex flex-col items-center justify-center text-center p-6 bg-gradient-to-b from-indigo-500 to-purple-600 rounded-3xl text-white shadow-xl">
-                    <div class="w-32 h-32 bg-white/20 p-4 rounded-full mb-6 border-4 border-white/40 shadow-inner animate-bounce">
-                        <svg viewBox="0 0 128 128" class="w-full h-full"><path d="M64 12 L104 48 L84 48 L84 100 L44 100 L44 48 L24 48 Z" fill="#FFD43B"/><circle cx="64" cy="65" r="12" fill="#313131"/></svg>
+                card.innerHTML = `
+                    <img src="${child.avatar || AVATARS[0]}" class="w-10 h-10 rounded-full bg-base-200 p-1" />
+                    <div class="flex-1 min-w-0">
+                        <p class="font-black text-xs truncate">${child.name}</p>
+                        <p class="text-[10px] opacity-70">Tahun ${child.year}</p>
                     </div>
-                    <h1 class="heading-font text-4xl font-extrabold tracking-wider mb-2 drop-shadow-md">Bijak Grammar</h1>
-                    <p class="text-indigo-100 font-medium text-sm max-w-xs mb-8">Master English Grammar effortlessly through dynamic KSSR primary school challenges!</p>
-                    
-                    <div id="welcome-profiles-box" class="w-full max-w-sm space-y-3 mb-6 overflow-y-auto max-h-48 px-2"></div>
-
-                    <button id="btn-start-welcome" class="w-full max-w-xs bg-amber-400 hover:bg-amber-300 text-slate-900 font-bold heading-font py-4 px-6 rounded-2xl shadow-lg transform active:scale-95 transition-all text-lg">
-                        <i class="fa-solid fa-graduation-cap mr-2"></i> Create Profile
+                    <button class="btn btn-ghost btn-xs btn-circle" onclick="event.stopPropagation(); openProfileModal(true, '${id}')">
+                        <i class="fa-solid fa-pen text-xs"></i>
                     </button>
-                </div>
-            `;
-
-            const pBox = document.getElementById("welcome-profiles-box");
-            const ids = Object.keys(STATE.profiles);
-            if (ids.length > 0) {
-                pBox.innerHTML = `<p class="text-xs font-bold text-indigo-200 uppercase tracking-widest mb-1">Select Profile</p>`;
-                ids.forEach(id => {
-                    const prof = STATE.profiles[id];
-                    const pDiv = document.createElement("div");
-                    pDiv.className = "flex items-center justify-between bg-white/10 hover:bg-white/20 p-3 rounded-xl border border-white/10 cursor-pointer transition-all";
-                    pDiv.innerHTML = `
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 bg-white rounded-full p-0.5">${prof.customPhoto ? `<img src="${prof.customPhoto}" class="w-full h-full object-cover rounded-full">` : AVATARS[prof.avatarIndex]}</div>
-                            <div class="text-left">
-                                <p class="font-bold text-sm text-white">${prof.name}</p>
-                                <p class="text-xs text-indigo-200">Year ${prof.year} • ${prof.stars || 0} Stars</p>
-                            </div>
-                        </div>
-                        <i class="fa-solid fa-chevron-right text-indigo-200 text-sm"></i>
-                    `;
-                    pDiv.addEventListener("click", () => {
-                        STATE.currentProfileId = id;
-                        saveState();
-                        navigate("home");
-                    });
-                    pBox.appendChild(pDiv);
-                });
-            }
-
-            document.getElementById("btn-start-welcome").addEventListener("click", () => {
-                navigate("create_profile");
-            });
-        }
-
-        function renderCreateProfileView(c) {
-            let selectedAvatar = 0;
-            let photoBase64 = null;
-
-            c.innerHTML = `
-                <div class="flex-1 flex flex-col bg-slate-50 dark:bg-slate-900 p-2">
-                    <h2 class="heading-font text-2xl font-bold text-indigo-600 dark:text-indigo-400 mb-4 text-center">Create Learner Profile</h2>
-                    
-                    <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 space-y-4">
-                        <!-- Avatar Picker -->
-                        <div>
-                            <label class="block text-xs font-bold uppercase text-slate-400 mb-2">Choose Avatar or Upload Photo</label>
-                            <div class="flex flex-wrap justify-center gap-3 mb-3" id="avatar-grid"></div>
-                            
-                            <div class="flex justify-center">
-                                <label class="cursor-pointer bg-slate-100 dark:bg-slate-700 px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 border border-slate-200 dark:border-slate-600">
-                                    <i class="fa-solid fa-camera"></i> Upload Picture
-                                    <input type="file" id="profile-upload" accept="image/*" class="hidden">
-                                </label>
-                            </div>
-                            <div id="upload-preview" class="text-center text-xs text-emerald-500 mt-1 hidden"><i class="fa-solid fa-circle-check"></i> Custom photo selected!</div>
-                        </div>
-
-                        <!-- Form -->
-                        <div>
-                            <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Learner's Name</label>
-                            <input type="text" id="prof-name" placeholder="Enter name..." class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-3">
-                            <div>
-                                <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Age</label>
-                                <input type="number" id="prof-age" min="6" max="13" value="7" class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold uppercase text-slate-400 mb-1">School Year</label>
-                                <select id="prof-year" class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                                    <option value="1">Year 1</option>
-                                    <option value="2">Year 2</option>
-                                    <option value="3">Year 3</option>
-                                    <option value="4">Year 4</option>
-                                    <option value="5">Year 5</option>
-                                    <option value="6">Year 6</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <button id="btn-save-profile" class="w-full bg-emerald-500 hover:bg-emerald-400 text-white font-bold heading-font py-3.5 rounded-xl shadow-md transition-all transform active:scale-95">
-                            Let's Learn! <i class="fa-solid fa-arrow-right ml-1"></i>
-                        </button>
-                    </div>
-                </div>
-            `;
-
-            const grid = document.getElementById("avatar-grid");
-            AVATARS.forEach((av, idx) => {
-                const item = document.createElement("div");
-                item.className = `w-14 h-14 p-1 rounded-full border-4 cursor-pointer transition-all ${idx === 0 ? 'border-indigo-500 scale-105' : 'border-transparent'}`;
-                item.innerHTML = av;
-                item.addEventListener("click", () => {
-                    selectedAvatar = idx;
-                    photoBase64 = null;
-                    document.getElementById("upload-preview").classList.add("hidden");
-                    document.querySelectorAll("#avatar-grid > div").forEach((d, i) => {
-                        d.className = `w-14 h-14 p-1 rounded-full border-4 cursor-pointer transition-all ${i === idx ? 'border-indigo-500 scale-105' : 'border-transparent'}`;
-                    });
-                });
-                grid.appendChild(item);
-            });
-
-            document.getElementById("profile-upload").addEventListener("change", (e) => {
-                const file = e.target.files[0];
-                if (file) {
-                    const reader = new FileReader();
-                    reader.onload = function(evt) {
-                        photoBase64 = evt.target.result;
-                        document.getElementById("upload-preview").classList.remove("hidden");
-                        document.querySelectorAll("#avatar-grid > div").forEach(d => d.className = "w-14 h-14 p-1 rounded-full border-4 border-transparent cursor-pointer transition-all");
-                    };
-                    reader.readAsDataURL(file);
-                }
-            });
-
-            document.getElementById("btn-save-profile").addEventListener("click", () => {
-                const name = document.getElementById("prof-name").value.trim();
-                const age = parseInt(document.getElementById("prof-age").value) || 7;
-                const year = parseInt(document.getElementById("prof-year").value) || 1;
-
-                if (!name) {
-                    alert("Please enter a learner name!");
-                    return;
-                }
-
-                const newId = "prof_" + Date.now();
-                STATE.profiles[newId] = {
-                    id: newId,
-                    name: name,
-                    age: age,
-                    year: year,
-                    avatarIndex: selectedAvatar,
-                    customPhoto: photoBase64,
-                    stars: 0,
-                    completedTopics: [],
-                    scores: {},
-                    streak: 1,
-                    lastActive: new Date().toDateString(),
-                    achievements: []
-                };
-
-                STATE.currentProfileId = newId;
-                saveState();
-                navigate("home");
-            });
-        }
-
-        function renderHomeView(c) {
-            const profile = STATE.profiles[STATE.currentProfileId];
-            c.innerHTML = `
-                <div class="space-y-5 flex-1 flex flex-col justify-between">
-                    <!-- Welcome Block -->
-                    <div class="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl p-4 text-white shadow-md relative overflow-hidden">
-                        <div class="relative z-10">
-                            <span class="bg-white/20 text-xs px-2 py-0.5 rounded-full font-bold uppercase tracking-wider text-amber-300">Level Track: Year ${profile.year}</span>
-                            <h3 class="heading-font text-2xl font-bold mt-1">Welcome back, ${profile.name}!</h3>
-                            <p class="text-xs text-indigo-100 mt-1">Ready to unlock your next English Grammar badge today?</p>
-                        </div>
-                        <i class="fa-solid fa-graduation-cap absolute right-2 bottom-2 text-7xl text-white/10 pointer-events-none"></i>
-                    </div>
-
-                    <!-- Grid Controls Dashboard Launcher -->
-                    <div class="grid grid-cols-2 gap-4 flex-1 content-start">
-                        <button id="launch-continue" class="col-span-2 bg-emerald-500 hover:bg-emerald-400 text-white p-4 rounded-2xl shadow-sm font-bold flex items-center justify-between transition-all transform active:scale-[0.98]">
-                            <div class="flex items-center gap-3 text-left">
-                                <div class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center text-2xl"><i class="fa-solid fa-play"></i></div>
-                                <div>
-                                    <p class="heading-font text-lg">Continue Learning</p>
-                                    <p class="text-xs text-emerald-100 font-normal">Jump straight back into the syllabus</p>
-                                </div>
-                            </div>
-                            <i class="fa-solid fa-circle-chevron-right text-xl text-white/80"></i>
-                        </button>
-
-                        <button id="launch-topics" class="bg-amber-400 hover:bg-amber-300 text-slate-900 p-4 rounded-2xl shadow-sm text-left flex flex-col justify-between h-32 transition-all transform active:scale-[0.98]">
-                            <div class="w-10 h-10 rounded-xl bg-slate-900/10 flex items-center justify-center text-xl"><i class="fa-solid fa-book"></i></div>
-                            <div>
-                                <p class="heading-font text-base font-bold">Grammar Topics</p>
-                                <p class="text-[11px] text-slate-700">Explore specific lessons</p>
-                            </div>
-                        </button>
-
-                        <button id="launch-quiz" class="bg-sky-400 hover:bg-sky-300 text-white p-4 rounded-2xl shadow-sm text-left flex flex-col justify-between h-32 transition-all transform active:scale-[0.98]">
-                            <div class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-xl"><i class="fa-solid fa-circle-question"></i></div>
-                            <div>
-                                <p class="heading-font text-base font-bold">Practice Mode</p>
-                                <p class="text-[11px] text-sky-100">Unlimited random challenges</p>
-                            </div>
-                        </button>
-
-                        <button id="launch-achievements" class="bg-purple-500 hover:bg-purple-400 text-white p-4 rounded-2xl shadow-sm text-left flex flex-col justify-between h-32 transition-all transform active:scale-[0.98]">
-                            <div class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-xl"><i class="fa-solid fa-award"></i></div>
-                            <div>
-                                <p class="heading-font text-base font-bold">Achievements</p>
-                                <p class="text-[11px] text-purple-100">Unlocked badges & medals</p>
-                            </div>
-                        </button>
-
-                        <button id="launch-progress" class="bg-rose-500 hover:bg-rose-400 text-white p-4 rounded-2xl shadow-sm text-left flex flex-col justify-between h-32 transition-all transform active:scale-[0.98]">
-                            <div class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-xl"><i class="fa-solid fa-chart-line"></i></div>
-                            <div>
-                                <p class="heading-font text-base font-bold">Progress Tracker</p>
-                                <p class="text-[11px] text-rose-100">View performance stats</p>
-                            </div>
-                        </button>
-                    </div>
-
-                    <!-- Quick Settings Action Launcher Link Footer row -->
-                    <button id="launch-settings" class="w-full bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 p-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all">
-                        <i class="fa-solid fa-gear text-slate-500 dark:text-slate-400"></i> Open App Settings
-                    </button>
-                </div>
-            `;
-
-            // Action mappings
-            document.getElementById("launch-continue").addEventListener("click", () => {
-                const list = SYLLABUS_DATABASE[profile.year] || [];
-                const uncompleted = list.find(t => !profile.completedTopics.includes(t.id));
-                STATE.currentLesson = uncompleted || list[0];
-                navigate("lesson");
-            });
-
-            document.getElementById("launch-topics").addEventListener("click", () => navigate("topics"));
-            document.getElementById("launch-quiz").addEventListener("click", () => {
-                // Launch dynamic rapid target practice directly
-                const topics = SYLLABUS_DATABASE[profile.year];
-                const randTopic = topics[Math.floor(Math.random() * topics.length)];
-                startQuizSession(randTopic.id, "Practice Mode");
-            });
-            document.getElementById("launch-achievements").addEventListener("click", () => navigate("achievements"));
-            document.getElementById("launch-progress").addEventListener("click", () => navigate("progress"));
-            document.getElementById("launch-settings").addEventListener("click", () => navigate("settings"));
-        }
-
-        function renderTopicsView(c) {
-            const profile = STATE.profiles[STATE.currentProfileId];
-            let activeYearTab = profile.year;
-
-            function renderTabContent() {
-                const list = SYLLABUS_DATABASE[activeYearTab] || [];
-                const topicsGrid = document.getElementById("topics-scroll-grid");
-                topicsGrid.innerHTML = "";
-                
-                list.forEach(t => {
-                    const isDone = profile.completedTopics.includes(t.id);
-                    const card = document.createElement("div");
-                    card.className = "bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl p-4 shadow-sm flex items-center justify-between gap-2 hover:border-indigo-300 transition-all cursor-pointer";
-                    card.innerHTML = `
-                        <div class="flex-1 text-left">
-                            <div class="flex items-center gap-2 mb-1">
-                                <h4 class="font-bold text-sm text-slate-800 dark:text-slate-100">${t.title}</h4>
-                                ${isDone ? '<span class="bg-emerald-100 dark:bg-emerald-900 text-emerald-600 dark:text-emerald-300 text-[10px] px-1.5 py-0.2 rounded-full font-bold">Passed</span>' : ''}
-                            </div>
-                            <p class="text-xs text-slate-400 dark:text-slate-400 line-clamp-1">${t.desc}</p>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <button class="btn-read-topic w-8 h-8 rounded-full bg-indigo-50 dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-xs hover:bg-indigo-600 hover:text-white transition-all" title="Study Lesson"><i class="fa-solid fa-book-open"></i></button>
-                            <button class="btn-quiz-topic w-8 h-8 rounded-full bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 fill-current flex items-center justify-center text-xs hover:bg-amber-400 hover:text-slate-900 transition-all" title="Take Quiz"><i class="fa-solid fa-star"></i></button>
-                        </div>
-                    `;
-                    
-                    card.querySelector(".btn-read-topic").addEventListener("click", (e) => {
-                        e.stopPropagation();
-                        STATE.currentLesson = t;
-                        navigate("lesson");
-                    });
-                    card.querySelector(".btn-quiz-topic").addEventListener("click", (e) => {
-                        e.stopPropagation();
-                        startQuizSession(t.id, t.title);
-                    });
-                    card.addEventListener("click", () => {
-                        STATE.currentLesson = t;
-                        navigate("lesson");
-                    });
-                    topicsGrid.appendChild(card);
-                });
-            }
-
-            c.innerHTML = `
-                <div class="space-y-4 flex-1 flex flex-col overflow-hidden">
-                    <!-- Year Segmented Tabs Switcher Control header -->
-                    <div class="flex bg-slate-100 dark:bg-slate-700 p-1 rounded-xl justify-between items-center shrink-0">
-                        ${[1,2,3,4,5,6].map(y => `<button data-year="${y}" class="tab-year-btn flex-1 text-center py-2 text-xs font-bold rounded-lg transition-all ${y === activeYearTab ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-xs' : 'text-slate-500' }">Y${y}</button>`).join('')}
-                    </div>
-
-                    <div id="topics-scroll-grid" class="flex-1 space-y-3 overflow-y-auto pb-4"></div>
-                </div>
-            `;
-
-            document.querySelectorAll(".tab-year-btn").forEach(btn => {
-                btn.addEventListener("click", (e) => {
-                    activeYearTab = parseInt(e.currentTarget.getAttribute("data-year"));
-                    document.querySelectorAll(".tab-year-btn").forEach(b => b.className = "tab-year-btn flex-1 text-center py-2 text-xs font-bold rounded-lg transition-all text-slate-500");
-                    e.currentTarget.className = "tab-year-btn flex-1 text-center py-2 text-xs font-bold rounded-lg transition-all bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-xs";
-                    renderTabContent();
-                });
-            });
-
-            renderTabContent();
-        }
-
-        function renderChallengesView(c) {
-            c.innerHTML = `
-                <div class="space-y-4 flex-1 flex flex-col justify-start">
-                    <div class="text-center py-2">
-                        <h2 class="heading-font text-2xl font-bold text-indigo-600 dark:text-indigo-400">Playgrounds</h2>
-                        <p class="text-xs text-slate-400">Test your elite limits with special customized challenges!</p>
-                    </div>
-
-                    <div class="bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl p-5 text-slate-900 shadow-md space-y-3 relative overflow-hidden">
-                        <div>
-                            <span class="bg-slate-900 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">Daily Fresh</span>
-                            <h3 class="heading-font text-xl font-bold mt-1">Daily Challenge</h3>
-                            <p class="text-xs text-slate-800 max-w-xs mt-1">15 randomized syllabus questions generated freshly for today's practice sequence streak.</p>
-                        </div>
-                        <button id="play-daily" class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold py-2.5 px-4 rounded-xl shadow transition-all transform active:scale-95">
-                            Start Daily Run
-                        </button>
-                        <i class="fa-solid fa-calendar-day absolute right-2 bottom-0 text-8xl text-slate-900/10 pointer-events-none"></i>
-                    </div>
-
-                    <div class="bg-gradient-to-br from-purple-500 to-indigo-600 rounded-2xl p-5 text-white shadow-md space-y-3 relative overflow-hidden">
-                        <div>
-                            <span class="bg-amber-400 text-slate-900 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">Elite Marathon</span>
-                            <h3 class="heading-font text-xl font-bold mt-1">Weekly Challenge</h3>
-                            <p class="text-xs text-indigo-100 max-w-xs mt-1">A massive mixed gauntlet containing 30 mixed grammar items tracking your entire school year framework.</p>
-                        </div>
-                        <button id="play-weekly" class="bg-white text-indigo-600 hover:bg-indigo-50 text-xs font-bold py-2.5 px-4 rounded-xl shadow transition-all transform active:scale-95">
-                            Start Weekly Marathon
-                        </button>
-                        <i class="fa-solid fa-bolt absolute right-2 bottom-0 text-8xl text-white/10 pointer-events-none"></i>
-                    </div>
-                </div>
-            `;
-
-            document.getElementById("play-daily").addEventListener("click", () => {
-                startQuizSession("daily_challenge", "Daily Challenge", 15);
-            });
-            document.getElementById("play-weekly").addEventListener("click", () => {
-                startQuizSession("weekly_challenge", "Weekly Challenge", 30);
-            });
-        }
-
-        function renderProfileView(c) {
-            const profile = STATE.profiles[STATE.currentProfileId];
-            c.innerHTML = `
-                <div class="space-y-5 flex-1 flex flex-col pb-4">
-                    <div class="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-100 dark:border-slate-700 shadow-sm text-center space-y-3 relative">
-                        <div class="w-24 h-24 bg-indigo-50 rounded-full p-1 mx-auto border-4 border-indigo-500 shadow-inner overflow-hidden relative">
-                            ${profile.customPhoto ? `<img src="${profile.customPhoto}" class="w-full h-full object-cover rounded-full">` : AVATARS[profile.avatarIndex]}
-                        </div>
-                        
-                        <div>
-                            <h3 class="heading-font text-xl font-bold">${profile.name}</h3>
-                            <p class="text-xs text-slate-400">Age ${profile.age} • Year ${profile.year} Student</p>
-                        </div>
-
-                        <div class="grid grid-cols-3 gap-2 bg-slate-50 dark:bg-slate-700/40 p-3 rounded-xl text-center">
-                            <div>
-                                <p class="text-lg font-bold text-indigo-600 dark:text-indigo-400">${profile.stars || 0}</p>
-                                <p class="text-[10px] font-semibold text-slate-400 uppercase tracking-tight">Stars</p>
-                            </div>
-                            <div>
-                                <p class="text-lg font-bold text-emerald-500">${profile.completedTopics.length}</p>
-                                <p class="text-[10px] font-semibold text-slate-400 uppercase tracking-tight">Passed</p>
-                            </div>
-                            <div>
-                                <p class="text-lg font-bold text-amber-500">${profile.streak || 1}d</p>
-                                <p class="text-[10px] font-semibold text-slate-400 uppercase tracking-tight">Streak</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Profiles switcher list view area block component layout selection -->
-                    <div class="bg-white dark:bg-slate-800 rounded-2xl p-4 border border-slate-100 dark:border-slate-700 shadow-sm flex-1 flex flex-col justify-between">
-                        <div class="space-y-3">
-                            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400"><i class="fa-solid fa-users mr-1"></i> Profiles Saved on Device</h4>
-                            <div id="profiles-list-box" class="space-y-2 overflow-y-auto max-h-40"></div>
-                        </div>
-
-                        <div class="space-y-2 pt-4">
-                            <button id="profile-add-new" class="w-full bg-indigo-600 text-white font-bold text-xs py-3 rounded-xl flex items-center justify-center gap-1 shadow-sm"><i class="fa-solid fa-plus-circle"></i> Create Another Profile</button>
-                            <button id="profile-go-settings" class="w-full bg-slate-100 dark:bg-slate-700 font-bold text-xs py-2.5 rounded-xl text-slate-600 dark:text-slate-300 flex items-center justify-center gap-1"><i class="fa-solid fa-sliders"></i> System Settings Dashboard</button>
-                        </div>
-                    </div>
-                </div>
-            `;
-
-            const box = document.getElementById("profiles-list-box");
-            Object.keys(STATE.profiles).forEach(id => {
-                const p = STATE.profiles[id];
-                const activeBorder = id === STATE.currentProfileId ? 'border-indigo-500 bg-indigo-50/40 dark:bg-indigo-950/20' : 'border-slate-100 dark:border-slate-700';
-                const row = document.createElement("div");
-                row.className = `flex items-center justify-between border p-2 rounded-xl transition-all cursor-pointer hover:bg-slate-50 ${activeBorder}`;
-                row.innerHTML = `
-                    <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 rounded-full bg-white p-0.5 shadow-xs overflow-hidden">${p.customPhoto ? `<img src="${p.customPhoto}" class="w-full h-full object-cover rounded-full">` : AVATARS[p.avatarIndex]}</div>
-                        <span class="text-xs font-bold ${id === STATE.currentProfileId ? 'text-indigo-600 dark:text-indigo-400' : ''}">${p.name} (Year ${p.year})</span>
-                    </div>
-                    ${id === STATE.currentProfileId ? '<i class="fa-solid fa-circle-check text-indigo-500 text-sm"></i>' : '<span class="text-[10px] text-slate-400 font-bold">Switch</span>'}
                 `;
-                row.addEventListener("click", () => {
-                    STATE.currentProfileId = id;
-                    saveState();
-                    navigate("profile");
-                });
-                box.appendChild(row);
+                listContainer.appendChild(card);
             });
 
-            document.getElementById("profile-add-new").addEventListener("click", () => navigate("create_profile"));
-            document.getElementById("profile-go-settings").addEventListener("click", () => navigate("settings"));
-        }
+            // Update Active Area If Present
+            if(window.selectedChildId && children[window.selectedChildId]) {
+                const activeChild = children[window.selectedChildId];
+                document.getElementById('active-profile-dashboard').classList.remove('hidden');
+                document.getElementById('active-child-indicator').innerText = `Profil Aktif: ${activeChild.name}`;
+                
+                // Track Progress
+                const progressData = activeChild.progress || {};
+                const totalTopics = 9 * 6; // Standardized approach
+                const completedCount = Object.keys(progressData).length;
+                const percent = Math.min(100, Math.round((completedCount / 15) * 100)); // normalized scaling 
+                
+                document.getElementById('dash-overall-progress').innerText = `${percent}%`;
+                document.getElementById('dash-progress-bar').value = percent;
 
-        function renderLessonView(c) {
-            const les = STATE.currentLesson;
-            if (!les) { navigate("home"); return; }
-
-            c.innerHTML = `
-                <div class="space-y-4 flex-1 flex flex-col justify-between pb-4">
-                    <!-- Lesson Main Material Content Frame Container box scrollable layer cards text components -->
-                    <div class="space-y-4 flex-1 overflow-y-auto pr-1">
-                        
-                        <!-- Main Rule Card -->
-                        <div class="bg-gradient-to-br from-indigo-50 to-indigo-100/50 dark:from-slate-800 dark:to-indigo-950/20 rounded-2xl p-5 border border-indigo-100 dark:border-slate-700 relative shadow-xs">
-                            <div class="flex items-center justify-between mb-2">
-                                <span class="bg-indigo-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">Grammar Rule</span>
-                                <button id="speak-rule-btn" class="w-8 h-8 rounded-full bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shadow-xs active:scale-95 transition-all"><i class="fa-solid fa-volume-high"></i></button>
-                            </div>
-                            <p id="lesson-rule-text" class="text-sm font-medium leading-relaxed">${les.rules}</p>
-                        </div>
-
-                        <!-- Examples Card Frame view item -->
-                        <div class="bg-white dark:bg-slate-800 rounded-2xl p-4 border border-slate-100 dark:border-slate-700 shadow-xs space-y-2.5">
-                            <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1"><i class="fa-solid fa-circle-check text-emerald-500"></i> Correct Examples</h4>
-                            <div class="space-y-2">
-                                ${les.examples.map((ex, i) => `
-                                    <div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-700/50 border border-slate-100 dark:border-slate-600/40">
-                                        <span class="text-xs font-semibold text-slate-700 dark:text-slate-200">${ex}</span>
-                                        <button class="btn-speak-ex w-6 h-6 rounded-full bg-white dark:bg-slate-600 text-slate-400 hover:text-indigo-600 flex items-center justify-center text-xs shadow-xs" data-text="${ex}"><i class="fa-solid fa-volume-low"></i></button>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        </div>
-
-                        <!-- Mistakes warning banner alert section box elements -->
-                        <div class="bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/50 rounded-2xl p-4 space-y-1">
-                            <h4 class="text-xs font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider flex items-center gap-1"><i class="fa-solid fa-triangle-exclamation"></i> Common Mistake To Avoid</h4>
-                            <p class="text-xs text-rose-700 dark:text-rose-300 font-medium leading-normal">${les.error}</p>
-                        </div>
-
-                        <!-- Summary info tip grid split blocks footer content summary -->
-                        <div class="grid grid-cols-2 gap-3">
-                            <div class="bg-amber-50/60 dark:bg-amber-950/10 border border-amber-100/70 dark:border-amber-900/30 p-3 rounded-xl">
-                                <span class="text-[10px] uppercase font-bold text-amber-600 block mb-0.5"><i class="fa-solid fa-lightbulb"></i> Handy Tip</span>
-                                <p class="text-[11px] text-slate-600 dark:text-slate-300 font-medium leading-snug">${les.tips}</p>
-                            </div>
-                            <div class="bg-emerald-50/60 dark:bg-emerald-950/10 border border-emerald-100/70 dark:border-emerald-900/30 p-3 rounded-xl">
-                                <span class="text-[10px] uppercase font-bold text-emerald-600 block mb-0.5"><i class="fa-solid fa-compress"></i> Summary</span>
-                                <p class="text-[11px] text-slate-600 dark:text-slate-300 font-medium leading-snug">${les.summary}</p>
-                            </div>
-                        </div>
-
-                    </div>
-
-                    <!-- Primary Action Trigger Launch Button -->
-                    <button id="btn-start-lesson-quiz" class="w-full bg-amber-400 hover:bg-amber-300 text-slate-900 font-bold heading-font py-4 rounded-xl shadow-md transition-all transform active:scale-95 flex items-center justify-center gap-2">
-                        Take Topic Quiz <i class="fa-solid fa-circle-play text-lg"></i>
-                    </button>
-                </div>
-            `;
-
-            // Wire audio actions
-            document.getElementById("speak-rule-btn").addEventListener("click", () => speakText(les.rules));
-            document.querySelectorAll(".btn-speak-ex").forEach(b => {
-                b.addEventListener("click", (e) => {
-                    speakText(e.currentTarget.getAttribute("data-text"));
-                });
-            });
-
-            document.getElementById("btn-start-lesson-quiz").addEventListener("click", () => {
-                startQuizSession(les.id, les.title);
-            });
-        }
-
-        // --- QUIZ MANAGEMENT CORE EXECUTION SYSTEM SYSTEM ---
-        function startQuizSession(topicId, topicTitle, customCount = 15) {
-            const profile = STATE.profiles[STATE.currentProfileId];
-            const questions = generateProceduralQuestions(topicId, profile.year, customCount);
-            
-            STATE.currentQuiz = {
-                topicId: topicId,
-                topicTitle: topicTitle,
-                questions: questions,
-                currentIndex: 0,
-                score: 0,
-                startTime: Date.now(),
-                userAnswers: [],
-                feedbackState: null // stores active visual popup overlay validation status details row items
-            };
-            
-            navigate("quiz");
-        }
-
-        function renderQuizView(c) {
-            const qz = STATE.currentQuiz;
-            if (!qz) { navigate("home"); return; }
-
-            const currentQuestion = qz.questions[qz.currentIndex];
-            const total = qz.questions.length;
-            const progressPct = ((qz.currentIndex) / total) * 100;
-
-            c.innerHTML = `
-                <div class="flex-1 flex flex-col justify-between h-full relative">
-                    <!-- Progress Header indicator row metric tracker parameters container -->
-                    <div class="w-full space-y-1.5 shrink-0">
-                        <div class="flex justify-between items-center text-xs font-bold text-slate-400">
-                            <span>Question ${qz.currentIndex + 1} of ${total}</span>
-                            <span class="text-indigo-600 dark:text-indigo-400 font-black">${Math.round((qz.currentIndex/total)*100)}% Complete</span>
-                        </div>
-                        <div class="w-full h-3 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden p-0.5 border border-slate-200/20">
-                            <div class="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all duration-300" style="width: ${progressPct}%"></div>
-                        </div>
-                    </div>
-
-                    <!-- Dynamic Question Area container block wrapper component items matrix content viewport -->
-                    <div class="flex-1 my-4 flex flex-col justify-center">
-                        <div class="bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 p-5 rounded-2xl shadow-sm text-center space-y-5">
-                            <div class="flex justify-center items-center gap-2">
-                                <span class="bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-300 text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full tracking-wider">Type: ${currentQuestion.t.toUpperCase()}</span>
-                                <button id="speak-quiz-q-btn" class="w-7 h-7 rounded-full bg-slate-50 dark:bg-slate-700 text-slate-500 flex items-center justify-center text-xs shadow-inner active:scale-95"><i class="fa-solid fa-volume-high"></i></button>
-                            </div>
-                            <h3 class="heading-font text-lg font-bold text-slate-800 dark:text-slate-100 px-1 leading-snug">${currentQuestion.q}</h3>
-                            
-                            <!-- Dynamic rendering slot container box targeted explicitly via child types mechanics parameters structural arrays -->
-                            <div id="quiz-interaction-slot" class="w-full pt-2"></div>
-                        </div>
-                    </div>
-
-                    <!-- Action Navigation Trigger Footer control bar row alignment items button elements stack box matrix block -->
-                    <div class="flex justify-between items-center gap-3 shrink-0 pt-2">
-                        <button id="quiz-btn-prev" class="flex-1 py-3 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-1">
-                            <i class="fa-solid fa-chevron-left"></i> Back
-                        </button>
-                        <button id="quiz-btn-submit" class="flex-2 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl transition-all shadow-md flex items-center justify-center gap-1">
-                            Check Answer <i class="fa-solid fa-circle-check"></i>
-                        </button>
-                    </div>
-
-                    <!-- Dynamic Global Immediate Feedback Panel Content Overlay Drawer layer wrapper framework component logic container box view -->
-                    <div id="feedback-drawer" class="absolute left-0 right-0 bottom-0 bg-white dark:bg-slate-800 rounded-t-3xl border-t-4 shadow-2xl p-5 space-y-4 transform translate-y-full transition-transform duration-300 z-40 hidden"></div>
-                </div>
-            `;
-
-            document.getElementById("speak-quiz-q-btn").addEventListener("click", () => speakText(currentQuestion.q));
-
-            // Setup navigation modifiers button control parameters visibility parameters state conditions
-            const btnPrev = document.getElementById("quiz-btn-prev");
-            if (qz.currentIndex === 0) {
-                btnPrev.disabled = true;
-                btnPrev.classList.add("opacity-40", "pointer-events-none");
-            }
-
-            // Inject respective interaction module block inputs layouts options
-            const slot = document.getElementById("quiz-interaction-slot");
-            let selectedAnswerPayload = null;
-
-            if (["mcq", "tf", "word", "sentence"].includes(currentQuestion.t)) {
-                // Render selectable items grids buttons options array block configurations
-                const grid = document.createElement("div");
-                grid.className = "grid grid-cols-1 gap-2.5";
-                currentQuestion.o.forEach(opt => {
-                    const optBtn = document.createElement("button");
-                    optBtn.className = "w-full text-left p-3.5 rounded-xl border-2 border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/30 text-xs font-bold text-slate-700 dark:text-slate-200 hover:border-indigo-200 transition-all focus:outline-none flex items-center justify-between";
-                    optBtn.innerHTML = `<span>${opt}</span> <div class="w-5 h-5 rounded-full border-2 border-slate-300 flex items-center justify-center shrink-0"></div>`;
-                    
-                    optBtn.addEventListener("click", () => {
-                        selectedAnswerPayload = opt;
-                        document.querySelectorAll("#quiz-interaction-slot button").forEach(b => {
-                            b.className = "w-full text-left p-3.5 rounded-xl border-2 border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/30 text-xs font-bold text-slate-700 dark:text-slate-200 hover:border-indigo-200 transition-all focus:outline-none flex items-center justify-between";
-                            b.querySelector("div").innerHTML = "";
-                        });
-                        optBtn.className = "w-full text-left p-3.5 rounded-xl border-2 border-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/20 text-xs font-black text-indigo-600 dark:text-indigo-400 flex items-center justify-between shadow-xs";
-                        optBtn.querySelector("div").innerHTML = `<div class="w-2.5 h-2.5 bg-indigo-600 rounded-full"></div>`;
-                    });
-                    grid.appendChild(optBtn);
-                });
-                slot.appendChild(grid);
-            } else if (["blank", "correction"].includes(currentQuestion.t)) {
-                // Render direct input text box components layer layouts options frame elements
-                const input = document.createElement("input");
-                input.type = "text";
-                input.placeholder = "Type your answer here...";
-                input.className = "w-full p-4 rounded-xl border-2 border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/50 text-sm font-bold text-center focus:border-indigo-500 focus:outline-none";
-                input.addEventListener("input", (e) => {
-                    selectedAnswerPayload = e.target.value.trim();
-                });
-                slot.appendChild(input);
+                // Badges Tracking
+                renderBadges(activeChild);
             } else {
-                // Fallback default interface
-                slot.innerHTML = `<p class="text-xs text-slate-400">Standard option parsing error fallback.</p>`;
-                selectedAnswerPayload = currentQuestion.a;
+                document.getElementById('active-profile-dashboard').classList.add('hidden');
             }
-
-            // Wire action handlers trigger controls submission mechanisms flow validation rules pipeline
-            document.getElementById("quiz-btn-prev").addEventListener("click", () => {
-                if (qz.currentIndex > 0) {
-                    qz.currentIndex--;
-                    renderQuizView(c);
-                }
-            });
-
-            document.getElementById("quiz-btn-submit").addEventListener("click", () => {
-                if (selectedAnswerPayload === null || selectedAnswerPayload === "") {
-                    alert("Please select or type an answer first!");
-                    return;
-                }
-                evaluateAndShowFeedback(selectedAnswerPayload);
-            });
         }
 
-        function evaluateAndShowFeedback(userAns) {
-            const qz = STATE.currentQuiz;
-            const curQ = qz.questions[qz.currentIndex];
+        // Badges Render Engine
+        function renderBadges(child) {
+            const container = document.getElementById('dash-badges-container');
+            container.innerHTML = '';
             
-            // Validation comparisons rules criteria parameters transformations metrics comparisons normalization check pipelines
-            let isCorrect = false;
-            if (typeof userAns === 'string' && typeof curQ.a === 'string') {
-                isCorrect = userAns.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"") === curQ.a.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"");
-            } else {
-                isCorrect = userAns == curQ.a;
-            }
-
-            if (isCorrect) qz.score++;
-            qz.userAnswers.push({ question: curQ.q, userAns: userAns, correctAns: curQ.a, status: isCorrect });
-
-            // Render drawer element configurations metrics parameters mapping interface controls nodes elements layouts
-            const drawer = document.getElementById("feedback-drawer");
-            drawer.classList.remove("hidden", "translate-y-full");
-            
-            if (isCorrect) {
-                drawer.classList.add("border-emerald-500");
-                drawer.classList.remove("border-rose-500");
-                drawer.innerHTML = `
-                    <div class="flex items-center gap-3 text-emerald-600 dark:text-emerald-400">
-                        <div class="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-950 flex items-center justify-center text-xl shadow-xs"><i class="fa-solid fa-face-smile-wink"></i></div>
-                        <div>
-                            <h4 class="heading-font text-lg font-black">${curQ.msg}</h4>
-                            <p class="text-[11px] text-slate-400 font-bold uppercase tracking-wider">That is absolutely correct!</p>
-                        </div>
-                    </div>
-                `;
-            } else {
-                drawer.classList.add("border-rose-500");
-                drawer.classList.remove("border-emerald-500");
-                drawer.innerHTML = `
-                    <div class="flex items-center gap-3 text-rose-600 dark:text-rose-400">
-                        <div class="w-10 h-10 rounded-full bg-rose-100 dark:bg-rose-950 flex items-center justify-center text-xl"><i class="fa-solid fa-face-sad-tear"></i></div>
-                        <div>
-                            <h4 class="heading-font text-lg font-black">Nice Try!</h4>
-                            <p class="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Let's learn from this mistake</p>
-                        </div>
-                    </div>
-                `;
-            }
-
-            // Append detailed comprehensive KSSR rule breakdown context analysis records data sets
-            drawer.innerHTML += `
-                <div class="bg-slate-50 dark:bg-slate-700/50 p-3.5 rounded-xl text-xs space-y-1.5 border border-slate-100 dark:border-slate-600/40">
-                    <p class="text-slate-700 dark:text-slate-200 font-medium"><strong class="text-indigo-600 dark:text-indigo-400">Correct Answer:</strong> ${curQ.a}</p>
-                    <p class="text-slate-500 dark:text-slate-400 leading-normal"><strong class="text-slate-600 dark:text-slate-300">Grammar Focus:</strong> ${curQ.rule}</p>
-                </div>
-                <button id="btn-feedback-continue" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3.5 rounded-xl text-xs shadow-md tracking-wide transition-all transform active:scale-95 flex items-center justify-center gap-1">
-                    Continue Journey <i class="fa-solid fa-circle-arrow-right text-sm"></i>
-                </button>
-            `;
-
-            document.getElementById("btn-feedback-continue").addEventListener("click", () => {
-                drawer.classList.add("translate-y-full");
-                setTimeout(() => {
-                    drawer.classList.add("hidden");
-                    // Step to next item node checkpoint sequence loop criteria checks
-                    qz.currentIndex++;
-                    if (qz.currentIndex < qz.questions.length) {
-                        renderQuizView(document.getElementById("view-container"));
-                    } else {
-                        processQuizCompletion();
-                    }
-                }, 200);
-            });
-        }
-
-        function processQuizCompletion() {
-            const qz = STATE.currentQuiz;
-            const profile = STATE.profiles[STATE.currentProfileId];
-            
-            const total = qz.questions.length;
-            const finalPct = Math.round((qz.score / total) * 100);
-            const timeElapsed = Math.round((Date.now() - qz.startTime) / 1000);
-            
-            // Calculate star allocation reward payload structures parameters metrics items
-            let starsEarned = 0;
-            if (finalPct === 100) starsEarned = 3;
-            else if (finalPct >= 80) starsEarned = 2;
-            else if (finalPct >= 50) starsEarned = 1;
-
-            // Save historical profile analytics telemetry metrics data states inside device storage
-            profile.stars = (profile.stars || 0) + starsEarned;
-            
-            if (!profile.scores) profile.scores = {};
-            if (!profile.scores[qz.topicId] || qz.score > profile.scores[qz.topicId]) {
-                profile.scores[qz.topicId] = qz.score;
-            }
-
-            if (finalPct >= 80 && !profile.completedTopics.includes(qz.topicId)) {
-                profile.completedTopics.push(qz.topicId);
-            }
-
-            // Process dynamic award badge achievements allocations criteria evaluations system loop checks
-            if (!profile.achievements) profile.achievements = [];
-            
-            if (profile.completedTopics.length >= 1 && !profile.achievements.includes("beginner")) {
-                profile.achievements.push("beginner");
-            }
-            if (finalPct === 100 && !profile.achievements.includes("perfect")) {
-                profile.achievements.push("perfect");
-            }
-            if (profile.stars >= 30 && !profile.achievements.includes("hero")) {
-                profile.achievements.push("hero");
-            }
-
-            saveState();
-            
-            // Trigger confetti particles graphics rendering engine directly if matching parameters rules conditions
-            if (finalPct === 100 && typeof confetti === 'function') {
-                confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
-            }
-
-            navigate("quiz_result");
-        }
-
-        function renderQuizResultView(c) {
-            const qz = STATE.currentQuiz;
-            if (!qz) { navigate("home"); return; }
-
-            const total = qz.questions.length;
-            const pct = Math.round((qz.score / total) * 100);
-            const elapsed = Math.round((Date.now() - qz.startTime) / 1000);
-
-            let starRatingHTML = "";
-            let starsCount = 0;
-            if (pct === 100) { starsCount = 3; starRatingHTML = `<i class="fa-solid fa-star text-amber-400 text-3xl animate-bounce"></i><i class="fa-solid fa-star text-amber-400 text-4xl animate-bounce"></i><i class="fa-solid fa-star text-amber-400 text-3xl animate-bounce"></i>`; }
-            else if (pct >= 80) { starsCount = 2; starRatingHTML = `<i class="fa-solid fa-star text-amber-400 text-3xl animate-pulse"></i><i class="fa-solid fa-star text-amber-400 text-3xl animate-pulse"></i><i class="fa-solid fa-star text-slate-200 dark:text-slate-600 text-2xl"></i>`; }
-            else if (pct >= 50) { starsCount = 1; starRatingHTML = `<i class="fa-solid fa-star text-amber-400 text-3xl animate-pulse"></i><i class="fa-solid fa-star text-slate-200 dark:text-slate-600 text-2xl"></i><i class="fa-solid fa-star text-slate-200 dark:text-slate-600 text-2xl"></i>`; }
-            else { starRatingHTML = `<i class="fa-solid fa-star text-slate-200 dark:text-slate-600 text-2xl"></i><i class="fa-solid fa-star text-slate-200 dark:text-slate-600 text-2xl"></i><i class="fa-solid fa-star text-slate-200 dark:text-slate-600 text-2xl"></i>`; }
-
-            c.innerHTML = `
-                <div class="space-y-5 flex-1 flex flex-col justify-between text-center pb-4">
-                    <div class="space-y-4">
-                        <div class="py-2">
-                            <h2 class="heading-font text-3xl font-black text-indigo-600 dark:text-indigo-400">Session Summary</h2>
-                            <p class="text-xs text-slate-400 uppercase font-bold tracking-wider mt-0.5">${qz.topicTitle}</p>
-                        </div>
-
-                        <!-- Star Display Frame -->
-                        <div class="flex justify-center items-center gap-2 py-1">
-                            ${starRatingHTML}
-                        </div>
-
-                        <!-- Stats Card Dashboard block summary view item layout parameters container components -->
-                        <div class="bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl p-4 shadow-sm grid grid-cols-2 gap-3 max-w-sm mx-auto">
-                            <div class="bg-slate-50 dark:bg-slate-700/50 p-3 rounded-xl">
-                                <span class="text-slate-400 font-bold uppercase text-[9px] block">Final Score</span>
-                                <span class="heading-font text-2xl font-black text-slate-800 dark:text-slate-100">${qz.score} / ${total}</span>
-                            </div>
-                            <div class="bg-slate-50 dark:bg-slate-700/50 p-3 rounded-xl">
-                                <span class="text-slate-400 font-bold uppercase text-[9px] block">Accuracy</span>
-                                <span class="heading-font text-2xl font-black text-emerald-500">${pct}%</span>
-                            </div>
-                            <div class="bg-slate-50 dark:bg-slate-700/50 p-3 rounded-xl">
-                                <span class="text-slate-400 font-bold uppercase text-[9px] block">Duration</span>
-                                <span class="heading-font text-2xl font-black text-indigo-500">${elapsed}s</span>
-                            </div>
-                            <div class="bg-slate-50 dark:bg-slate-700/50 p-3 rounded-xl">
-                                <span class="text-slate-400 font-bold uppercase text-[9px] block">Stars Claimed</span>
-                                <span class="heading-font text-2xl font-black text-amber-500">+${starsCount}</span>
-                            </div>
-                        </div>
-
-                        <!-- Perfect Badge Banner overlay structural indicator message element block -->
-                        ${pct === 100 ? `
-                            <div class="bg-amber-400 text-slate-900 px-4 py-3 rounded-xl font-bold max-w-sm mx-auto shadow-md animate-pulse text-xs flex items-center justify-center gap-2">
-                                <i class="fa-solid fa-medal text-lg"></i> Unlocked: Perfect Score Medal Badge Achievement!
-                            </div>
-                        ` : ''}
-                    </div>
-
-                    <!-- Return action navigation bottom control parameters launcher row -->
-                    <button id="btn-result-finish" class="w-full max-w-sm mx-auto bg-emerald-500 hover:bg-emerald-400 text-white font-bold heading-font py-4 rounded-xl shadow-lg transition-all transform active:scale-95 flex items-center justify-center gap-1">
-                        Return to Hub <i class="fa-solid fa-circle-right"></i>
-                    </button>
-                </div>
-            `;
-
-            document.getElementById("btn-result-finish").addEventListener("click", () => {
-                STATE.currentQuiz = null;
-                navigate("home");
-            });
-        }
-
-        function renderAchievementsView(c) {
-            const profile = STATE.profiles[STATE.currentProfileId];
-            const earned = profile.achievements || [];
-
-            // Hardcoded static reference list of standard programmatically configured badges medals
-            const badgesRef = [
-                { id: "beginner", title: "Grammar Beginner", desc: "Pass your very first syllabus topic quiz.", icon: "fa-seedling", color: "from-green-400 to-emerald-500" },
-                { id: "explorer", title: "Grammar Explorer", desc: "Log in and practice regular grammar topics items safely.", icon: "fa-compass", color: "from-sky-400 to-indigo-500" },
-                { id: "hero", title: "Grammar Hero", desc: "Earn a milestone total metric collection of 30 Stars.", icon: "fa-mask", color: "from-orange-400 to-rose-500" },
-                { id: "perfect", title: "Perfect Score Medal", desc: "Score 15/15 exactly on any verified curriculum lesson quiz.", icon: "fa-crown", color: "from-amber-400 to-orange-500" },
-                { id: "master", title: "Grammar Master", desc: "Complete all primary school years topics modules completely.", icon: "fa-graduation-cap", color: "from-purple-500 to-fuchsia-600" }
+            const badgesList = [
+                { id: 'first_topic', name: '🏅 Topik Pertama', desc: 'Selesai kuiz pertama' },
+                { id: 'perfect_score', name: '🏅 Skor 100%', desc: 'Dapat 15/15 dalam kuiz' },
+                { id: 'master', name: '🏅 Pakar Matematik', desc: 'Menjawab kuiz 5 kali' }
             ];
-
-            c.innerHTML = `
-                <div class="space-y-4 flex-1 flex flex-col overflow-hidden pb-2">
-                    <div class="text-center">
-                        <h2 class="heading-font text-2xl font-bold text-indigo-600 dark:text-indigo-400">Achievements</h2>
-                        <p class="text-xs text-slate-400">Unlock special badges by hitting key learning milestones!</p>
-                    </div>
-
-                    <div class="flex-1 overflow-y-auto space-y-3 pr-1">
-                        ${badgesRef.map(b => {
-                            // Verify status
-                            const unlocked = earned.includes(b.id) || b.id === "explorer"; // explorer unlocked by default usage parameter tracking
-                            return `
-                                <div class="bg-white dark:bg-slate-800 border rounded-2xl p-4 flex items-center gap-4 transition-all ${unlocked ? 'border-slate-100 dark:border-slate-700 opacity-100 shadow-sm' : 'border-slate-200 dark:border-slate-700/50 opacity-50 select-none grayscale' }">
-                                    <div class="w-14 h-14 rounded-xl bg-gradient-to-br ${b.color} text-white flex items-center justify-center text-2xl shadow shadow-md shrink-0 relative">
-                                        <i class="fa-solid ${b.icon}"></i>
-                                        ${unlocked ? '<div class="absolute -right-1 -top-1 w-4 h-4 rounded-full bg-emerald-500 border border-white flex items-center justify-center text-[8px] text-white font-bold"><i class="fa-solid fa-check"></i></div>' : ''}
-                                    </div>
-                                    <div class="text-left space-y-0.5">
-                                        <h4 class="font-bold text-sm text-slate-800 dark:text-slate-100">${b.title}</h4>
-                                        <p class="text-xs text-slate-400 dark:text-slate-400 leading-normal">${b.desc}</p>
-                                        <span class="text-[10px] font-bold ${unlocked ? 'text-emerald-500' : 'text-slate-400' }">${unlocked ? 'Unlocked & Active' : 'Locked' }</span>
-                                    </div>
-                                </div>
-                            `;
-                        }).join('')}
-                    </div>
-                </div>
-            `;
-        }
-
-        function renderProgressDetailsView(c) {
-            const profile = STATE.profiles[STATE.currentProfileId];
             
-            // Calculate a synthetic estimation scale metric mapping for completeness tracking
-            const totalSyllabusItemsCount = Object.values(SYLLABUS_DATABASE).reduce((acc, curr) => acc + curr.length, 0);
-            const passedCount = profile.completedTopics.length;
-            const completionPct = Math.round((passedCount / totalSyllabusItemsCount) * 100);
-
-            c.innerHTML = `
-                <div class="space-y-4 flex-1 flex flex-col justify-start overflow-hidden pb-4">
-                    <div class="text-center">
-                        <h2 class="heading-font text-2xl font-bold text-indigo-600 dark:text-indigo-400">Progress Tracker</h2>
-                        <p class="text-xs text-slate-400">Real-time breakdown of your grammar metrics and scores.</p>
-                    </div>
-
-                    <!-- Macro Completion Card Gauge bar alignment panel row stack structural display component grid template -->
-                    <div class="bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 p-5 rounded-2xl shadow-sm text-center space-y-3">
-                        <span class="text-xs font-bold text-slate-400 uppercase tracking-widest block">Syllabus Completion Gauge</span>
-                        <div class="relative w-28 h-28 mx-auto flex items-center justify-center bg-indigo-50 dark:bg-slate-700 rounded-full border-4 border-indigo-500 shadow-inner">
-                            <span class="heading-font text-2xl font-black text-indigo-600 dark:text-indigo-400">${completionPct}%</span>
-                        </div>
-                        <p class="text-xs text-slate-500 dark:text-slate-400 max-w-xs mx-auto font-medium leading-normal">You have completed and successfully certified in <strong class="text-slate-700 dark:text-slate-200">${passedCount} out of ${totalSyllabusItemsCount}</strong> total structured grammar focus topic tracks.</p>
-                    </div>
-
-                    <!-- Micro Metric Data Table Panel rows cards -->
-                    <div class="bg-white dark:bg-slate-800 rounded-2xl p-4 border border-slate-100 dark:border-slate-700 shadow-sm space-y-3 flex-1 overflow-y-auto">
-                        <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-400"><i class="fa-solid fa-chart-pie mr-1"></i> Core Learning Statistics</h3>
-                        
-                        <div class="divide-y divide-slate-100 dark:divide-slate-700 text-xs">
-                            <div class="py-2.5 flex justify-between items-center">
-                                <span class="font-medium text-slate-500">Current Learning Level Rank</span>
-                                <span class="font-bold text-indigo-600 dark:text-indigo-400">Year ${profile.year} Curriculum</span>
-                            </div>
-                            <div class="py-2.5 flex justify-between items-center">
-                                <span class="font-medium text-slate-500">Total Reward Stars Collected</span>
-                                <span class="font-bold text-amber-500"><i class="fa-solid fa-star mr-0.5"></i> ${profile.stars || 0}</span>
-                            </div>
-                            <div class="py-2.5 flex justify-between items-center">
-                                <span class="font-medium text-slate-500">Active Daily Streak Period</span>
-                                <span class="font-bold text-rose-500"><i class="fa-solid fa-fire mr-0.5"></i> ${profile.streak || 1} Days Active</span>
-                            </div>
-                            <div class="py-2.5 flex justify-between items-center">
-                                <span class="font-medium text-slate-500">Verified Badges Unlocked</span>
-                                <span class="font-bold text-purple-600 dark:text-purple-400">${profile.achievements ? profile.achievements.length + 1 : 1} Badges</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
+            let unlockedCount = 0;
+            const progress = child.progress || {};
+            const attemptsTotal = Object.values(progress).reduce((acc, curr) => acc + (curr.attempts || 0), 0);
+            const highScores = Object.values(progress).map(p => p.highScore || 0);
+            
+            // Evaluasi Lencana
+            let activeBadges = [];
+            if(Object.keys(progress).length >= 1) activeBadges.push('first_topic');
+            if(highScores.includes(15)) activeBadges.push('perfect_score');
+            if(attemptsTotal >= 5) activeBadges.push('master');
+            
+            badgesList.forEach(b => {
+                const isUnlocked = activeBadges.includes(b.id);
+                if(isUnlocked) unlockedCount++;
+                const div = document.createElement('span');
+                div.className = `badge p-2 text-xs font-bold ${isUnlocked ? 'badge-warning text-warning-content' : 'badge-ghost opacity-40'}`;
+                div.innerText = b.name;
+                div.title = b.desc;
+                container.appendChild(div);
+            });
+            
+            document.getElementById('badge-count').innerText = unlockedCount;
         }
 
-        function renderSettingsView(c) {
-            const profile = STATE.profiles[STATE.currentProfileId];
-            c.innerHTML = `
-                <div class="space-y-4 flex-1 flex flex-col justify-start pb-4">
-                    <div class="text-center py-1">
-                        <h2 class="heading-font text-2xl font-bold text-indigo-600 dark:text-indigo-400">Settings</h2>
-                        <p class="text-xs text-slate-400">Configure application toggles and local profiles states.</p>
-                    </div>
-
-                    <div class="bg-white dark:bg-slate-800 rounded-2xl p-4 border border-slate-100 dark:border-slate-700 shadow-sm space-y-4">
-                        <h3 class="text-xs font-bold uppercase text-slate-400 tracking-wider"><i class="fa-solid fa-sliders mr-1"></i> Preferences Toggles</h3>
-                        
-                        <!-- Toggle Row Sound Audio Pronunciation tracking -->
-                        <div class="flex items-center justify-between border-b border-slate-50 dark:border-slate-700 pb-3">
-                            <div>
-                                <span class="text-xs font-bold block">Audio Pronunciation Speech Output</span>
-                                <span class="text-[10px] text-slate-400 block font-medium">Plays native English audio on tap events</span>
-                            </div>
-                            <button id="toggle-audio-btn" class="w-12 h-6 rounded-full transition-all relative ${STATE.audioEnabled ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-slate-600' }">
-                                <div class="w-4 h-4 rounded-full bg-white absolute top-1 transition-all ${STATE.audioEnabled ? 'right-1' : 'left-1' }"></div>
-                            </button>
-                        </div>
-
-                        <!-- Toggle Row Dark Mode configuration system -->
-                        <div class="flex items-center justify-between border-b border-slate-50 dark:border-slate-700 pb-3">
-                            <div>
-                                <span class="text-xs font-bold block">High Contrast Dark Interface Theme</span>
-                                <span class="text-[10px] text-slate-400 block font-medium">Optimizes viewing comfort for evening study</span>
-                            </div>
-                            <button id="toggle-dark-btn" class="w-12 h-6 rounded-full transition-all relative ${STATE.theme === 'dark' ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-slate-600' }">
-                                <div class="w-4 h-4 rounded-full bg-white absolute top-1 transition-all ${STATE.theme === 'dark' ? 'right-1' : 'left-1' }"></div>
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Hard Master Systems Resets Management Operations controls rows panel blocks component lists buttons links structural configuration -->
-                    <div class="bg-white dark:bg-slate-800 rounded-2xl p-4 border border-slate-100 dark:border-slate-700 shadow-sm space-y-2">
-                        <h3 class="text-xs font-bold uppercase text-slate-400 tracking-wider mb-2"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Danger Zone Operations</h3>
-                        
-                        <button id="btn-reset-app" class="w-full bg-rose-50 hover:bg-rose-100 text-rose-600 dark:bg-rose-950/20 dark:hover:bg-rose-900/30 font-bold text-xs py-3 rounded-xl transition-all border border-rose-200/40 flex items-center justify-center gap-1">
-                            <i class="fa-solid fa-trash-can"></i> Erase All Profile Data & Scores
-                        </button>
-                    </div>
-                </div>
-            `;
-
-            // Wire UI interactivity listeners
-            const audBtn = document.getElementById("toggle-audio-btn");
-            audBtn.addEventListener("click", () => {
-                STATE.audioEnabled = !STATE.audioEnabled;
-                saveState();
-                audBtn.className = `w-12 h-6 rounded-full transition-all relative ${STATE.audioEnabled ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-slate-600' }`;
-                audBtn.querySelector("div").className = `w-4 h-4 rounded-full bg-white absolute top-1 transition-all ${STATE.audioEnabled ? 'right-1' : 'left-1' }`;
-                updateHeaderUI();
-            });
-
-            const dkBtn = document.getElementById("toggle-dark-btn");
-            dkBtn.addEventListener("click", () => {
-                STATE.theme = STATE.theme === "dark" ? "light" : "dark";
-                saveState();
-                applyTheme();
-                dkBtn.className = `w-12 h-6 rounded-full transition-all relative ${STATE.theme === 'dark' ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-slate-600' }`;
-                dkBtn.querySelector("div").className = `w-4 h-4 rounded-full bg-white absolute top-1 transition-all ${STATE.theme === 'dark' ? 'right-1' : 'left-1' }`;
-            });
-
-            document.getElementById("btn-reset-app").addEventListener("click", () => {
-                if (confirm("Are you absolutely sure you want to clear everything? This will permanently wipe all created profile records and progress scores on this local device. This action cannot be reversed.")) {
-                    localStorage.removeItem("BIJAK_GRAMMAR_STATE");
-                    STATE.profiles = {};
-                    STATE.currentProfileId = null;
-                    STATE.theme = "light";
-                    STATE.audioEnabled = true;
-                    applyTheme();
-                    navigate("welcome");
-                }
-            });
+        function selectChildProfile(id) {
+            playSound('click');
+            window.selectedChildId = id;
+            if(window.userData.children[id]) {
+                document.getElementById('nav-avatar').getElementsByTagName('img')[0].src = window.userData.children[id].avatar || AVATARS[0];
+            }
+            renderDashboard();
         }
 
-        // --- LAUNCH APPLICATION KICKSTART TRIGGER ---
-        window.addEventListener("DOMContentLoaded", () => {
-            initApp();
-        });
+        // CRUD Profile Modal Setup
+        function openProfileModal(isEdit, id = null) {
+            playSound('click');
+            const modal = document.getElementById('profile-modal');
+            const avatarPicker = document.getElementById('avatar-picker');
+            avatarPicker.innerHTML = '';
+            
+            // Build Avatars choices
+            AVATARS.forEach(url => {
+                const img = document.createElement('img');
+                img.src = url;
+                img.className = "w-12 h-12 rounded-full cursor-pointer border-2 border-transparent p-1 hover:bg-base-300";
+                img.onclick = () => {
+                    avatarPicker.querySelectorAll('img').forEach(i => i.classList.remove('border-primary', 'bg-primary/20'));
+                    img.classList.add('border-primary', 'bg-primary/20');
+                    img.dataset.selected = "true";
+                };
+                avatarPicker.appendChild(img);
+            });
+            avatarPicker.children[0].click(); // default selection
+
+            if(isEdit && id) {
+                document.getElementById('modal-profile-title').innerText = "Kemaskini Profil Anak";
+                document.getElementById('modal-profile-id').value = id;
+                document.getElementById('modal-profile-name').value = window.userData.children[id].name;
+                document.getElementById('modal-profile-year').value = window.userData.children[id].year;
+                document.getElementById('btn-delete-profile').classList.remove('hidden');
+            } else {
+                document.getElementById('modal-profile-title').innerText = "Cipta Profil Anak Baru";
+                document.getElementById('modal-profile-id').value = '';
+                document.getElementById('modal-profile-name').value = '';
+                document.getElementById('modal-profile-year').value = '1';
+                document.getElementById('btn-delete-profile').classList.add('hidden');
+            }
+            modal.showModal();
+        }
+
+        function saveProfileClick() {
+            playSound('click');
+            const id = document.getElementById('modal-profile-id').value || 'c_' + Date.now();
+            const name = document.getElementById('modal-profile-name').value.trim();
+            const year = parseInt(document.getElementById('modal-profile-year').value);
+            
+            const selectedImg = document.getElementById('avatar-picker').querySelector('[data-selected="true"]');
+            const avatar = selectedImg ? selectedImg.src : AVATARS[0];
+            
+            if(!name) { alert("Sila masukkan nama anak!"); return; }
+            
+            if(!window.userData.children) window.userData.children = {};
+            
+            if(!window.userData.children[id]) {
+                window.userData.children[id] = { name, year, avatar, progress: {} };
+            } else {
+                window.userData.children[id].name = name;
+                window.userData.children[id].year = year;
+                window.userData.children[id].avatar = avatar;
+            }
+            
+            window.selectedChildId = id;
+            document.getElementById('profile-modal').close();
+            if(window.saveProfileToCloud) window.saveProfileToCloud();
+        }
+
+        function deleteProfileClick() {
+            playSound('click');
+            const id = document.getElementById('modal-profile-id').value;
+            if(!id) return;
+            if(confirm("Adakah anda pasti mahu memadam profil anak ini? Perkembangan pembelajaran akan hilang.")) {
+                delete window.userData.children[id];
+                if(window.selectedChildId === id) window.selectedChildId = null;
+                document.getElementById('profile-modal').close();
+                if(window.saveProfileToCloud) window.saveProfileToCloud();
+            }
+        }
+
+        // Syllabus Year Selector
+        function selectYear(year) {
+            window.currentYear = year;
+            document.getElementById('topics-title').innerText = `Matematik KSSR Tahun ${year}`;
+            
+            const container = document.getElementById('topics-container');
+            container.innerHTML = '';
+            
+            const topics = KSSR_SYLLABUS[year] || [];
+            const childProgress = window.userData.children[window.selectedChildId].progress || {};
+
+            topics.forEach((topic) => {
+                const prog = childProgress[topic.id] || { highScore: 0, attempts: 0 };
+                const item = document.createElement('div');
+                item.className = "card p-4 bg-base-100 border border-base-300 rounded-2xl flex flex-row justify-between items-center cursor-pointer hover:bg-base-200 transition-all shadow-sm";
+                item.onclick = () => openTopicNote(topic);
+                
+                item.innerHTML = `
+                    <div class="flex-1 pr-2">
+                        <h4 class="font-black text-sm text-base-content">${topic.title}</h4>
+                        <p class="text-[11px] opacity-60">Cubaan: ${prog.attempts} | Rekod Terbaik: ${prog.highScore}/15</p>
+                    </div>
+                    <div class="flex flex-col items-end gap-1">
+                        ${prog.highScore === 15 ? '<span class="badge badge-success text-white text-[10px] font-bold">Selesai ✨</span>' : '<span class="badge badge-ghost text-[10px]">Belum Selesai</span>'}
+                        <progress class="progress progress-accent w-16" value="${prog.highScore}" max="15"></progress>
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+            showScreen('topics');
+        }
+
+        // Topic Explanation Loader
+        function openTopicNote(topic) {
+            window.currentTopic = topic;
+            document.getElementById('note-topic-title').innerText = topic.title;
+            document.getElementById('note-year-tag').innerText = `Tahun ${window.currentYear}`;
+            
+            // Build Dynamic Step-by-Step Educational Explanation Inside the Notes Screen
+            let explanationHTML = `
+                <p class="text-base-content/80 text-sm leading-relaxed mb-3">${topic.note}</p>
+                <div class="bg-primary/5 p-3 rounded-xl border border-primary/20 mb-3">
+                    <h5 class="font-black text-primary text-xs uppercase tracking-wide mb-1"><i class="fa-solid fa-lightbulb mr-1"></i> Tip Mengingat Mudah</h5>
+                    <p class="text-xs italic text-base-content/90">Visualisasikan objek konkrit di sekeliling anda, sentiasa semak unit jawapan akhir, dan buat latihan secara konsisten untuk membentuk kebiasaan memori logik yang mantap!</p>
+                </div>
+                <h5 class="font-black text-sm mb-2"><i class="fa-solid fa-calculator text-secondary mr-1"></i> Contoh Langkah demi Langkah:</h5>
+                <div class="bg-base-200 p-3 rounded-xl font-mono text-xs space-y-2 text-base-content">
+            `;
+            
+            // Contextual Step Generator
+            if(topic.id.includes('tambah') || topic.id.includes('operasi')) {
+                explanationHTML += `
+                    <p class="text-primary font-bold">// Pengiraan Bentuk Lazim:</p>
+                    <p class="pl-2">  1 2 (Simpan 1 di atas)</p>
+                    <p class="pl-2">+ 1 9</p>
+                    <p class="pl-2">------</p>
+                    <p class="pl-2 font-bold text-success">  3 1  (Jawapan Akhir)</p>
+                `;
+            } else if (topic.id.includes('darab')) {
+                explanationHTML += `
+                    <p class="text-primary font-bold">// Konsep Tambah Berulang:</p>
+                    <p class="pl-2">3 Kumpulan gandaan 4 objek:</p>
+                    <p class="pl-2">4 + 4 + 4 = 12</p>
+                    <p class="pl-2">Ditulis dalam bentuk ayat matematik darab:</p>
+                    <p class="pl-2 font-bold text-success">3 x 4 = 12</p>
+                `;
+            } else {
+                explanationHTML += `
+                    <p class="text-primary font-bold">// Analisis Konseptual:</p>
+                    <p class="pl-2">1. Kenali unit ukuran atau pembolehubah yang diberikan.</p>
+                    <p class="pl-2">2. Tukar unit asas jika tidak selari.</p>
+                    <p class="pl-2 font-bold text-success">3. Selesaikan operasi dari kanan ke kiri mengikut tertib matrik matematik.</p>
+                `;
+            }
+            
+            explanationHTML += `</div>`;
+            document.getElementById('note-content').innerHTML = explanationHTML;
+            showScreen('topic-detail');
+        }
+
+        // INTELLIGENT QUESTION PROCEDURAL GENERATOR ENGINE (No Repetition Sessions)
+        let quizQuestions = [];
+        let currentQuestionIdx = 0;
+        let quizScore = 0;
+        let quizStartTime = null;
+        let quizTimerInterval = null;
+
+        function startQuiz() {
+            playSound('click');
+            quizQuestions = [];
+            currentQuestionIdx = 0;
+            quizScore = 0;
+            
+            // Build 15 Random Dynamic Procedural Questions for Current Topic Session
+            for(let i=0; i<15; i++) {
+                quizQuestions.push(generateProceduralQuestion(window.currentYear, window.currentTopic.id, i+1));
+            }
+            
+            quizStartTime = Date.now();
+            clearInterval(quizTimerInterval);
+            quizTimerInterval = setInterval(() => {
+                const diff = Date.now() - quizStartTime;
+                const min = String(Math.floor(diff / 60000)).padStart(2, '0');
+                const sec = String(Math.floor((diff % 60000) / 1000)).padStart(2, '0');
+                document.getElementById('quiz-timer').innerText = `${min}:${sec}`;
+            }, 1000);
+            
+            showScreen('quiz');
+            loadQuestion();
+        }
+
+        function generateProceduralQuestion(year, topicId, index) {
+            // Seed base numbers using loop index + multipliers to guarantee variation without hardcoding array structures
+            const valA = Math.floor(Math.random() * (year * 12)) + (index * 2) + 2;
+            const valB = Math.floor(Math.random() * (year * 6)) + index + 1;
+            
+            let text = "";
+            let answer = "";
+            let type = "choices"; // Default type
+            let choices = [];
+            let visual = "";
+            let stepText = "";
+
+            if (topicId.includes("nombor")) {
+                text = `Apakah nilai tempat bagi digit yang paling besar dalam gabungan angka ${valA}${valB}?`;
+                answer = "Puluh";
+                choices = ["Sa", "Puluh", "Ratus", "Ribu"];
+                stepText = "Susun angka mengikut lajur nilai tempat dari kanan ke kiri (Sa -> Puluh -> Ratus).";
+            } else if (topicId.includes("tambah") || topicId.includes("operasi")) {
+                const total = valA + valB;
+                text = `Selesaikan tugasan pengiraan matematik ini: Berapakah nilai akhir bagi ${valA} ditambah dengan ${valB}?`;
+                answer = String(total);
+                choices = [String(total), String(total - 1), String(total + 3), String(valA * 2)];
+                stepText = `Gunakan kaedah penambahan bentuk lazim ringkas: ${valA} + ${valB} menghasilkan jumlah tepat ${total}.`;
+            } else if (topicId.includes("darab")) {
+                const multi = valA * 2;
+                text = `Cari hasil darab bagi kombinasi linear ini: ${valA} x 2 = ?`;
+                answer = String(multi);
+                choices = [String(multi), String(multi + 2), String(multi - 2), String(valA + 2)];
+                stepText = `Pendaraban bermaksud gandaan berulang objek: Tambahkan nilai ${valA} sebanyak 2 kali berturut-turut.`;
+            } else if (topicId.includes("wang")) {
+                text = `Kira baki wang anda sekiranya wang bernilai RM${valA + 20} digunakan untuk membayar barangan kedai berharga RM${valA}?`;
+                answer = "RM20";
+                choices = ["RM20", "RM10", "RM5", "RM15"];
+                stepText = `Tolak jumlah bayaran daripada wang yang diberikan penjaga: (RM${valA + 20} - RM${valA} = RM20).`;
+            } else {
+                // Generalized fallback dynamic question format matching criteria
+                const sumFactor = valA + 5;
+                text = `Selesaikan masalah aplikasi harian murid pintar: Ali mempunyai ${sumFactor} biji guli, dia memberikan 5 biji kepada rakan sekolahnya. Berapakah baki guli Ali sekarang?`;
+                answer = String(valA);
+                type = "input"; // Fill in blanks requirement fallback
+                stepText = `Kira perbezaan kuantiti objek asal secara baki operasi tolak terus: ${sumFactor} - 5 = ${valA}.`;
+            }
+
+            // Shuffle implementation arrays dynamically to keep layouts unpredictable
+            if(type === "choices") {
+                choices = [...new Set(choices)]; // ensure uniqueness
+                while(choices.length < 4) { choices.push(String(Math.floor(Math.random() * 100))); }
+                choices.sort(() => Math.random() - 0.5);
+            }
+
+            return { text, answer, type, choices, stepText, visual };
+        }
+
+        function loadQuestion() {
+            document.getElementById('quiz-current-idx').innerText = currentQuestionIdx + 1;
+            document.getElementById('quiz-progress').value = currentQuestionIdx + 1;
+            document.getElementById('quiz-feedback').classList.add('hidden');
+            
+            const q = quizQuestions[currentQuestionIdx];
+            document.getElementById('quiz-question-text').innerText = q.text;
+            
+            const zone = document.getElementById('quiz-answer-zone');
+            zone.innerHTML = '';
+            zone.classList.remove('hidden');
+
+            if(q.type === 'choices') {
+                q.choices.forEach(choice => {
+                    const btn = document.createElement('button');
+                    btn.className = "btn btn-outline btn-block text-left rounded-xl normal-case justify-start pl-4 font-bold text-sm h-auto py-3 bg-base-100 hover:btn-primary";
+                    btn.innerText = choice;
+                    btn.onclick = () => checkAnswer(choice, btn);
+                    zone.appendChild(btn);
+                });
+            } else if (q.type === 'input') {
+                zone.innerHTML = `
+                    <div class="join w-full">
+                        <input type="text" id="quiz-blank-input" class="input input-bordered join-item w-full font-bold text-center" placeholder="Taip jawapan angka di sini..." />
+                        <button class="btn btn-neutral join-item text-white" onclick="checkAnswer(document.getElementById('quiz-blank-input').value.trim(), this)">Semak</button>
+                    </div>
+                `;
+            }
+        }
+
+        function checkAnswer(userAns, element) {
+            const q = quizQuestions[currentQuestionIdx];
+            const isCorrect = userAns.toLowerCase() === q.answer.toLowerCase();
+            
+            // Lock active interfaces
+            document.getElementById('quiz-answer-zone').classList.add('hidden');
+            
+            const fb = document.getElementById('quiz-feedback');
+            const status = document.getElementById('feedback-status');
+            const exp = document.getElementById('feedback-explanation');
+            
+            fb.classList.remove('hidden');
+            
+            if(isCorrect) {
+                playSound('correct');
+                quizScore++;
+                status.className = "font-black text-lg text-success";
+                status.innerHTML = "✅ Betul! Bijak Sekali.";
+                exp.innerText = "Luar biasa! Pemahaman anda terhadap konsep asas matrik topik ini sudah sangat tepat. Teruskan momentum cemerlang ini!";
+            } else {
+                playSound('wrong');
+                status.className = "font-black text-lg text-error";
+                status.innerHTML = `❌ Salah (Jawapan: ${q.answer})`;
+                exp.innerHTML = `
+                    <p class="font-bold mb-1">Langkah Penyelesaian:</p>
+                    <p class="bg-base-300 p-2 rounded-lg font-mono text-[11px] text-base-content">${q.stepText}</p>
+                `;
+            }
+        }
+
+        function nextQuestion() {
+            playSound('click');
+            currentQuestionIdx++;
+            if(currentQuestionIdx < 15) {
+                loadQuestion();
+            } else {
+                finishQuizSession();
+            }
+        }
+
+        // Finalize Quiz and Compile Analytics
+        function finishQuizSession() {
+            clearInterval(quizTimerInterval);
+            const totalTimeSec = Math.floor((Date.now() - quizStartTime) / 1000);
+            const min = String(Math.floor(totalTimeSec / 60)).padStart(2, '0');
+            const sec = String(totalTimeSec % 60).padStart(2, '0');
+            const timeStr = `${min}:${sec}`;
+            
+            const percent = Math.round((quizScore / 15) * 100);
+            
+            // Set performance tiers
+            let stars = "⭐";
+            let tier = "Cuba Lagi";
+            if(percent === 100) { stars = "⭐⭐⭐⭐⭐"; tier = "Cemerlang"; confetti(); playSound('badge'); }
+            else if(percent >= 80) { stars = "⭐⭐⭐⭐"; tier = "Sangat Baik"; playSound('success'); }
+            else if(percent >= 60) { stars = "⭐⭐⭐"; tier = "Baik"; playSound('success'); }
+            else if(percent >= 40) { stars = "⭐⭐"; tier = "Perlu Latihan"; }
+            
+            document.getElementById('res-rating-text').innerText = tier;
+            document.getElementById('res-stars').innerText = stars;
+            document.getElementById('res-score').innerText = `${quizScore} / 15`;
+            document.getElementById('res-percent').innerText = `${percent}%`;
+            document.getElementById('res-time').innerText = timeStr;
+            document.getElementById('res-status').innerText = percent >= 50 ? "Lulus Gred" : "Gagal Gred";
+            
+            // Write analytics back into the cloud object
+            if(window.selectedChildId && window.userData.children[window.selectedChildId]) {
+                const child = window.userData.children[window.selectedChildId];
+                if(!child.progress) child.progress = {};
+                
+                const prev = child.progress[window.currentTopic.id] || { highScore: 0, attempts: 0 };
+                child.progress[window.currentTopic.id] = {
+                    highScore: Math.max(prev.highScore, quizScore),
+                    attempts: prev.attempts + 1,
+                    lastDate: new Date().toLocaleDateString('ms-MY')
+                };
+                
+                if(window.saveProfileToCloud) window.saveProfileToCloud();
+            }
+            
+            showScreen('results');
+        }
     </script>
 </body>
 </html>
