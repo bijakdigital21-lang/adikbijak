@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Adik Bijak - Aplikasi Pembelajaran Prasekolah</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- FontAwesome for Cute Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Canvas Confetti for Celebrations -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@300..700&display=swap');
+        body {
+            font-family: 'Fredoka', sans-serif;
+            background-color: #FEF3C7;
+        }
+        .bounce-hover:hover {
+            transform: scale(1.05) rotate(2deg);
+        }
+    </style>
+</head>
+<body class="min-h-screen text-slate-700 flex flex-col antialiased selection:bg-pink-200">
+
+    <!-- TOP NAVIGATION BAR -->
+    <nav class="bg-white shadow-md p-4 flex justify-between items-center sticky top-0 z-50 rounded-b-3xl">
+        <div class="flex items-center space-x-3 cursor-pointer" onclick="navigate('dashboard')">
+            <div class="bg-amber-400 p-2.5 rounded-2xl shadow-inner text-white text-2xl animate-bounce">
+                <i class="fa-solid fa-graduation-cap"></i>
+            </div>
+            <span class="text-2xl font-bold tracking-wide bg-gradient-to-r from-amber-500 via-pink-500 to-purple-600 bg-clip-text text-transparent">Adik Bijak</span>
+        </div>
+        
+        <div id="nav-user-profile" class="hidden flex items-center space-x-4">
+            <div id="active-child-summary" class="flex items-center bg-purple-50 px-4 py-1.5 rounded-full border border-purple-100 hidden cursor-pointer" onclick="navigate('profile-selection')">
+                <img id="nav-child-avatar" src="" class="w-9 h-9 rounded-full object-cover border-2 border-purple-400 mr-2" alt="Anak">
+                <div>
+                    <p id="nav-child-name" class="text-xs font-bold text-purple-700 leading-tight"></p>
+                    <div class="flex items-center space-x-2 text-[10px] text-amber-600 font-semibold">
+                        <span><i class="fa-solid fa-star"></i> <span id="nav-child-stars">0</span></span>
+                        <span><i class="fa-solid fa-trophy"></i> <span id="nav-child-trophies">0</span></span>
+                    </div>
+                </div>
+            </div>
+            <button onclick="logout()" class="text-sm font-semibold bg-rose-100 hover:bg-rose-200 text-rose-600 px-4 py-2 rounded-xl transition shadow-sm">
+                <i class="fa-solid fa-arrow-right-from-bracket mr-1"></i> Log Keluar
+            </button>
+        </div>
+    </nav>
+
+    <!-- MAIN APP CONTAINERS -->
+    <main class="flex-1 max-w-5xl w-full mx-auto p-4 md:p-6 flex flex-col justify-center">
+        
+        <!-- 1. AUTH SCREEN -->
+        <section id="view-auth" class="view flex flex-col items-center justify-center text-center space-y-8 py-12">
+            <div class="max-w-md bg-white p-8 rounded-3xl shadow-xl border-4 border-amber-300 relative overflow-hidden">
+                <div class="absolute -top-10 -right-10 w-32 h-32 bg-yellow-200 rounded-full opacity-50 blur-xl"></div>
+                <div class="absolute -bottom-10 -left-10 w-32 h-32 bg-pink-200 rounded-full opacity-50 blur-xl"></div>
+                
+                <i class="fa-solid fa-child-reaching text-7xl text-amber-500 animate-pulse mb-4"></i>
+                <h1 class="text-4xl font-extrabold text-slate-800 mb-2">Selamat Datang!</h1>
+                <p class="text-slate-500 text-lg mb-8">Jom belajar bersama Adik Bijak! Dunia pembelajaran interaktif, ceria, dan menyeronokkan untuk si manja anda.</p>
+                
+                <button onclick="loginWithGoogle()" class="w-full flex items-center justify-center bg-white hover:bg-slate-50 border-2 border-slate-200 text-slate-700 font-bold py-3.5 px-6 rounded-2xl shadow-md transition-all bounce-hover text-lg">
+                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/smartlock/icon_google.svg" class="w-6 h-6 mr-3" alt="Google">
+                    Log Masuk dengan Google
+                </button>
+                <p class="text-xs text-slate-400 mt-4"><i class="fa-solid fa-shield-halved mr-1 text-emerald-500"></i> Sistem log masuk selamat disokong oleh Firebase</p>
+            </div>
+        </section>
+
+        <!-- 2. PROFILE SELECTION -->
+        <section id="view-profile-selection" class="view hidden space-y-6">
+            <div class="text-center">
+                <h2 class="text-3xl font-black text-slate-800">Siapa nak belajar hari ini?</h2>
+                <p class="text-slate-500">Pilih profil anak atau tambah profil baru di bawah.</p>
+            </div>
+            
+            <div id="children-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6 pt-4">
+                <!-- Dynamically loaded -->
+            </div>
+            
+            <div class="flex justify-center pt-6">
+                <button onclick="openProfileModal()" class="bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 px-8 rounded-2xl shadow-lg bounce-hover text-lg transition">
+                    <i class="fa-solid fa-plus-circle mr-2"></i> Tambah Profil Anak
+                </button>
+            </div>
+        </section>
+
+        <!-- 3. DASHBOARD -->
+        <section id="view-dashboard" class="view hidden space-y-6">
+            <!-- Child Status Ribbon -->
+            <div class="bg-gradient-to-r from-purple-500 via-pink-500 to-amber-400 p-6 rounded-3xl shadow-xl text-white flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0 relative overflow-hidden">
+                <div class="flex items-center flex-col md:flex-row text-center md:text-left space-y-3 md:space-y-0 md:space-x-6 z-10">
+                    <img id="dash-child-avatar" src="" class="w-24 h-24 rounded-full object-cover border-4 border-white shadow-md bg-white" alt="Avatar">
+                    <div>
+                        <h2 class="text-3xl font-black">Hai, <span id="dash-child-name">Adam</span>! 👋</h2>
+                        <p class="text-purple-100 font-medium text-sm mt-0.5"><i class="fa-solid fa-cake-candles mr-1"></i> <span id="dash-child-age">5</span> Tahun | Aktiviti terakhir: <span id="dash-last-activity" class="font-bold underline">Tiada</span></p>
+                        <div class="mt-3 flex flex-wrap justify-center md:justify-start gap-3">
+                            <span class="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-xl text-xs font-bold flex items-center"><i class="fa-solid fa-star text-yellow-300 mr-1.5 text-sm"></i> <span id="dash-stars">0</span> Bintang</span>
+                            <span class="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-xl text-xs font-bold flex items-center"><i class="fa-solid fa-trophy text-amber-300 mr-1.5 text-sm"></i> <span id="dash-trophies">0</span> Trofi</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/20 text-center w-full md:w-auto min-w-[200px] z-10">
+                    <p class="text-xs uppercase font-bold tracking-wider text-purple-100">Kemajuan Keseluruhan</p>
+                    <p class="text-4xl font-black my-1" id="dash-overall-progress">0%</p>
+                    <div class="w-full bg-black/20 h-2.5 rounded-full overflow-hidden">
+                        <div id="dash-progress-bar" class="bg-emerald-400 h-full transition-all duration-500" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dashboard Navigation Actions -->
+            <div class="flex flex-wrap gap-3 justify-center md:justify-between items-center bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+                <div class="flex flex-wrap gap-2">
+                    <button onclick="startAutoLearning()" class="bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-5 py-2.5 rounded-xl shadow transition bounce-hover text-sm"><i class="fa-solid fa-play mr-1"></i> Sambung Belajar</button>
+                    <button onclick="navigate('modules-menu')" class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold px-5 py-2.5 rounded-xl shadow transition bounce-hover text-sm"><i class="fa-solid fa-book mr-1"></i> Semua Modul</button>
+                    <button onclick="viewAchievements()" class="bg-amber-500 hover:bg-amber-600 text-white font-bold px-5 py-2.5 rounded-xl shadow transition bounce-hover text-sm"><i class="fa-solid fa-trophy mr-1"></i> Pencapaian</button>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="editCurrentProfile()" class="bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold px-4 py-2.5 rounded-xl transition text-sm"><i class="fa-solid fa-user-gear mr-1"></i> Tetapan Profil</button>
+                    <button onclick="navigate('profile-selection')" class="bg-purple-100 hover:bg-purple-200 text-purple-700 font-bold px-4 py-2.5 rounded-xl transition text-sm"><i class="fa-solid fa-users mr-1"></i> Tukar Profil</button>
+                </div>
+            </div>
+
+            <!-- MODULES GRID DIRECT ACCESS -->
+            <div class="space-y-3">
+                <h3 class="text-xl font-bold text-slate-800 px-1">Zon Pembelajaran Ceria</h3>
+                <div id="menu-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                    <!-- Loaded dynamically via modular structure -->
+                </div>
+            </div>
+        </section>
+
+        <!-- 4. ACADEMIC MODULAR VIEWS (COMPACT COMPONENT CONTAINER) -->
+        <section id="view-module" class="view hidden space-y-6">
+            <div class="flex items-center justify-between bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+                <button onclick="navigate('dashboard')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-4 py-2 rounded-xl transition text-sm">
+                    <i class="fa-solid fa-house mr-1"></i> Isian Utama
+                </button>
+                <h2 id="module-title" class="text-2xl font-black text-purple-700">Nama Modul</h2>
+                <div id="module-score-pill" class="bg-amber-50 text-amber-700 border border-amber-200 px-3 py-1 rounded-full text-xs font-bold">
+                    Selesai: <span id="module-progress-value">0%</span>
+                </div>
+            </div>
+
+            <!-- Dynamic Sub-view Workspace -->
+            <div id="module-workspace" class="bg-white p-6 rounded-3xl shadow-lg border-2 border-slate-100 min-h-[400px] flex flex-col justify-center items-center">
+                <!-- Content injected dynamically via template engine -->
+            </div>
+        </section>
+        
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="bg-slate-100 text-center py-4 text-xs text-slate-400 font-medium rounded-t-3xl border-t border-slate-200 mt-8">
+        &copy; 2026 Adik Bijak App. Hak Cipta Terpelihara. Diperkasakan oleh Firebase & AI Kesayangan Anda.
+    </footer>
+
+    <!-- PROFILE MODAL (ADD / EDIT) -->
+    <div id="profile-modal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden backdrop-blur-sm">
+        <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl p-6 border-4 border-purple-300 relative max-h-[90vh] overflow-y-auto">
+            <button onclick="closeProfileModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-xl"><i class="fa-solid fa-circle-xmark"></i></button>
+            <h3 id="modal-title" class="text-2xl font-black text-purple-700 mb-4">Profil Si Manja Baru</h3>
+            
+            <form id="profile-form" onsubmit="saveProfile(event)" class="space-y-4">
+                <input type="hidden" id="form-child-id">
+                
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Nama Manja</label>
+                    <input type="text" id="form-child-name" required placeholder="Contoh: Adam" class="w-full bg-slate-50 border-2 border-slate-200 p-3 rounded-xl focus:outline-none focus:border-purple-400 font-bold">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Tarikh Lahir</label>
+                        <input type="date" id="form-child-dob" required onchange="calculateAgeFromForm()" class="w-full bg-slate-50 border-2 border-slate-200 p-3 rounded-xl focus:outline-none focus:border-purple-400 font-medium text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Umur (Tahun)</label>
+                        <input type="number" id="form-child-age" readonly class="w-full bg-slate-100 border-2 border-slate-200 p-3 rounded-xl font-bold text-center text-slate-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Jantina</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <label class="flex items-center justify-center p-3 bg-blue-50 border-2 border-blue-200 rounded-xl cursor-pointer font-bold text-blue-700 select-none">
+                            <input type="radio" name="gender" value="Lelaki" checked class="mr-2 accent-blue-600"> 👦 Lelaki
+                        </label>
+                        <label class="flex items-center justify-center p-3 bg-pink-50 border-2 border-pink-200 rounded-xl cursor-pointer font-bold text-pink-700 select-none">
+                            <input type="radio" name="gender" value="Perempuan" class="mr-2 accent-pink-600"> 👧 Perempuan
+                        </label>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Gambar Profil (Avatar)</label>
+                    <div class="flex items-center space-x-4 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                        <img id="form-avatar-preview" src="https://api.dicebear.com/7.x/bottts/svg?seed=default" class="w-16 h-16 rounded-full object-cover border-2 border-slate-300 bg-white" alt="Preview">
+                        <div class="flex-1 flex flex-col space-y-2">
+                            <input type="file" id="form-avatar-file" accept="image/*" onchange="previewImageFile(event)" class="text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-purple-100 file:text-purple-700 hover:file:bg-purple-200 cursor-pointer">
+                            <button type="button" onclick="triggerCameraCapture()" class="text-left text-xs font-bold text-indigo-600 hover:underline"><i class="fa-solid fa-camera mr-1"></i> Guna Kamera Peranti</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-2 flex space-x-3">
+                    <button type="button" id="btn-delete-profile" onclick="deleteCurrentProfile()" class="hidden bg-rose-100 hover:bg-rose-200 text-rose-600 font-bold px-4 rounded-xl transition text-sm">Padam</button>
+                    <button type="submit" class="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl shadow-md transition">Simpan Profil ✨</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- FIREBASE MODULES COMPAT LAYER (V10 SDK VIA CDN) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        // Firebase Configuration injected safely
+        const firebaseConfig = {
+            apiKey: "AIzaSyBIM5kk6oz0QkCmn___A_s2X-DSyGmEMAM",
+            authDomain: "adik-bijak-50fa0.firebaseapp.com",
+            databaseURL: "https://adik-bijak-50fa0-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "adik-bijak-50fa0",
+            storageBucket: "adik-bijak-50fa0.firebasestorage.app",
+            messagingSenderId: "566306302068",
+            appId: "1:566306302068:web:effb5a20e4818cee960921"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const provider = new GoogleAuthProvider();
+
+        // System Runtime States
+        let CURRENT_USER = null;
+        let CHILDREN_DATA = {};
+        let ACTIVE_CHILD_ID = null;
+
+        // Core App Data Matrix (Curriculum structured for Preschoolers)
+        const MODUL_DATA = {
+            'abc': { title: 'Belajar ABC', icon: 'fa-font', color: 'from-blue-400 to-indigo-500' },
+            '123': { title: 'Belajar 123', icon: 'fa-arrow-1-9', color: 'from-emerald-400 to-teal-500' },
+            'animal': { title: 'Dunia Haiwan', icon: 'fa-paw', color: 'from-amber-400 to-orange-500' },
+            'tracing': { title: 'Latihan Tracing', icon: 'fa-signature', color: 'from-pink-400 to-rose-500' },
+            'warna': { title: 'Warna Asas', icon: 'fa-palette', color: 'from-purple-400 to-fuchsia-500' },
+            'bentuk': { title: 'Bentuk Asas', icon: 'fa-shapes', color: 'from-sky-400 to-cyan-500' },
+            'buah': { title: 'Buah-buahan', icon: 'fa-apple-whole', color: 'from-red-400 to-orange-500' },
+            'sayur': { title: 'Sayur-sayuran', icon: 'fa-carrot', color: 'from-green-400 to-emerald-500' },
+            'kenderaan': { title: 'Kenderaan', icon: 'fa-car-side', color: 'from-blue-500 to-cyan-600' },
+            'badan': { title: 'Anggota Badan', icon: 'fa-child', color: 'from-yellow-400 to-amber-500' },
+            'cuaca': { title: 'Keadaan Cuaca', icon: 'fa-cloud-sun-rain', color: 'from-indigo-400 to-slate-500' },
+            'hari': { title: 'Hari & Bulan', icon: 'fa-calendar-days', color: 'from-teal-400 to-emerald-600' }
+        };
+
+        // Static Dataset for Syllabus Content
+        const CONTENT_DB = {
+            abc: [
+                { id: 'A', word: 'Apple', icon: '🍎' }, { id: 'B', word: 'Ball', icon: '⚽' },
+                { id: 'C', word: 'Cat', icon: '🐱' }, { id: 'D', word: 'Dog', icon: '🐶' },
+                { id: 'E', word: 'Elephant', icon: '🐘' }, { id: 'F', word: 'Fish', icon: '🐟' }
+            ],
+            123: [
+                { num: 1, icon: '🍎' }, { num: 2, icon: '🍎🍎' }, { num: 3, icon: '🍎🍎🍎' },
+                { num: 4, icon: '⭐️⭐️⭐️⭐️' }, { num: 5, icon: '🎈🎈🎈🎈🎈' }
+            ],
+            animal: [
+                { name: 'Lembu', type: 'Ladang', sound: 'Mooo', icon: '🐄', fact: 'Lembu menghasilkan susu segar berkalsium tinggi.' },
+                { name: 'Singa', type: 'Hutan', sound: 'Roar', icon: '🦁', fact: 'Singa dikenali sebagai Raja Rimba.' },
+                { name: 'Paus', type: 'Laut', sound: 'Whale Sound', icon: '🐋', fact: 'Paus adalah mamalia terbesar di lautan dunia.' }
+            ],
+            warna: [
+                { name: 'Merah', hex: '#EF4444' }, { name: 'Biru', hex: '#3B82F6' },
+                { name: 'Hijau', hex: '#10B981' }, { name: 'Kuning', hex: '#FBBF24' }
+            ]
+        };
+
+        // Application Routing System
+        window.navigate = function(viewId) {
+            document.querySelectorAll('.view').forEach(v => v.classList.add('hidden'));
+            document.getElementById(`view-${viewId}`).classList.remove('hidden');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        };
+
+        // Firebase Authentication Core Hooks
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                CURRENT_USER = user;
+                document.getElementById('nav-user-profile').classList.remove('hidden');
+                await loadChildrenProfiles();
+                if (ACTIVE_CHILD_ID && CHILDREN_DATA[ACTIVE_CHILD_ID]) {
+                    selectChild(ACTIVE_CHILD_ID);
+                } else {
+                    navigate('profile-selection');
+                }
+            } else {
+                CURRENT_USER = null;
+                document.getElementById('nav-user-profile').classList.add('hidden');
+                document.getElementById('active-child-summary').classList.add('hidden');
+                navigate('auth');
+            }
+        });
+
+        window.loginWithGoogle = async function() {
+            try {
+                await signInWithPopup(auth, provider);
+            } catch (err) {
+                alert("Ralat log masuk Google: " + err.message);
+            }
+        };
+
+        window.logout = function() {
+            signOut(auth).then(() => {
+                ACTIVE_CHILD_ID = null;
+                location.reload();
+            });
+        };
+
+        // Children Profile Data Engine (Cloud Firestore Sync)
+        async function loadChildrenProfiles() {
+            if (!CURRENT_USER) return;
+            const childrenCol = collection(db, "Users", CURRENT_USER.uid, "Children");
+            const snap = await getDocs(childrenCol);
+            CHILDREN_DATA = {};
+            const grid = document.getElementById('children-grid');
+            grid.innerHTML = '';
+
+            snap.forEach((doc) => {
+                CHILDREN_DATA[doc.id] = { id: doc.id, ...doc.data() };
+                
+                // Render profile item cards
+                const data = doc.data();
+                const card = document.createElement('div');
+                card.className = "bg-white p-5 rounded-3xl border-4 border-slate-100 shadow-md flex flex-col items-center text-center cursor-pointer transition bounce-hover";
+                card.onclick = () => selectChild(doc.id);
+                card.innerHTML = `
+                    <img src="${data.photoUrl || 'https://api.dicebear.com/7.x/bottts/svg?seed=' + data.nama}" class="w-20 h-20 rounded-full object-cover border-4 border-purple-200 mb-3 bg-slate-50" alt="${data.nama}">
+                    <h4 class="font-black text-xl text-slate-800">${data.nama}</h4>
+                    <p class="text-xs font-bold text-slate-400">${data.umur} Tahun (${data.jantina})</p>
+                    <div class="mt-2 bg-purple-50 text-purple-700 px-3 py-0.5 rounded-full text-[11px] font-extrabold flex items-center">
+                        <i class="fa-solid fa-star text-amber-400 mr-1"></i> ${data.bintang || 0}
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        window.selectChild = function(childId) {
+            ACTIVE_CHILD_ID = childId;
+            const child = CHILDREN_DATA[childId];
+            if (!child) return;
+
+            // Global active top nav refresh
+            document.getElementById('active-child-summary').classList.remove('hidden');
+            document.getElementById('nav-child-avatar').src = child.photoUrl || 'https://api.dicebear.com/7.x/bottts/svg?seed=' + child.nama;
+            document.getElementById('nav-child-name').innerText = child.nama;
+            document.getElementById('nav-child-stars').innerText = child.bintang || 0;
+            document.getElementById('nav-child-trophies').innerText = child.trofi || 0;
+
+            // Dashboard View Refresh
+            document.getElementById('dash-child-avatar').src = child.photoUrl || 'https://api.dicebear.com/7.x/bottts/svg?seed=' + child.nama;
+            document.getElementById('dash-child-name').innerText = child.nama;
+            document.getElementById('dash-child-age').innerText = child.umur;
+            document.getElementById('dash-stars').innerText = child.bintang || 0;
+            document.getElementById('dash-trophies').innerText = child.trofi || 0;
+            document.getElementById('dash-last-activity').innerText = child.aktivitiTerakhir || 'Tiada';
+            
+            // Progress engine compute
+            const progress = child.progress || {};
+            const keys = Object.keys(MODUL_DATA);
+            let overallSum = 0;
+            keys.forEach(k => { overallSum += (progress[k] || 0); });
+            const overallPct = Math.round(overallSum / keys.length);
+
+            document.getElementById('dash-overall-progress').innerText = `${overallPct}%`;
+            document.getElementById('dash-progress-bar').style.width = `${overallPct}%`;
+
+            renderDashboardGrid();
+            navigate('dashboard');
+        };
+
+        function renderDashboardGrid() {
+            const container = document.getElementById('menu-grid');
+            container.innerHTML = '';
+            const child = CHILDREN_DATA[ACTIVE_CHILD_ID];
+            const currentProgress = child?.progress || {};
+
+            Object.keys(MODUL_DATA).forEach(key => {
+                const mod = MODUL_DATA[key];
+                const pct = currentProgress[key] || 0;
+                
+                const card = document.createElement('div');
+                card.className = `bg-gradient-to-br ${mod.color} text-white p-5 rounded-3xl shadow-md cursor-pointer transition bounce-hover relative overflow-hidden flex flex-col justify-between min-h-[140px]`;
+                card.onclick = () => openModuleWorkspace(key);
+                card.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div class="bg-white/20 p-3 rounded-2xl text-2xl shadow-inner"><i class="fa-solid ${mod.icon}"></i></div>
+                        <span class="bg-black/10 backdrop-blur-sm px-2 py-0.5 rounded-lg text-[10px] font-bold">${pct}% Siap</span>
+                    </div>
+                    <div>
+                        <h4 class="font-black text-lg leading-tight">${mod.title}</h4>
+                        <div class="w-full bg-white/20 h-1.5 rounded-full mt-2 overflow-hidden">
+                            <div class="bg-white h-full" style="width: ${pct}%"></div>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // Modal Management Layer (Add & Update Profiles)
+        window.openProfileModal = function(editId = null) {
+            const form = document.getElementById('profile-form');
+            form.reset();
+            document.getElementById('form-avatar-preview').src = "https://api.dicebear.com/7.x/bottts/svg?seed=default";
+            
+            if (editId && CHILDREN_DATA[editId]) {
+                const c = CHILDREN_DATA[editId];
+                document.getElementById('modal-title').innerText = "Kemaskini Profil Anak";
+                document.getElementById('form-child-id').value = c.id;
+                document.getElementById('form-child-name').value = c.nama;
+                document.getElementById('form-child-dob').value = c.tarikhLahir || '';
+                document.getElementById('form-child-age').value = c.umur || 4;
+                document.querySelector(`input[name="gender"][value="${c.jantina}"]`).checked = true;
+                if (c.photoUrl) document.getElementById('form-avatar-preview').src = c.photoUrl;
+                document.getElementById('btn-delete-profile').classList.remove('hidden');
+            } else {
+                document.getElementById('modal-title').innerText = "Profil Si Manja Baru";
+                document.getElementById('form-child-id').value = '';
+                document.getElementById('btn-delete-profile').classList.add('hidden');
+            }
+            document.getElementById('profile-modal').classList.remove('hidden');
+        };
+
+        window.closeProfileModal = function() {
+            document.getElementById('profile-modal').classList.add('hidden');
+        };
+
+        window.calculateAgeFromForm = function() {
+            const dobValue = document.getElementById('form-child-dob').value;
+            if (!dobValue) return;
+            const birthDate = new Date(dobValue);
+            const today = new Date();
+            let age = today.getFullYear() - birthDate.getFullYear();
+            const m = today.getMonth() - birthDate.getMonth();
+            if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+                age--;
+            }
+            document.getElementById('form-child-age').value = age > 0 ? age : 4;
+        };
+
+        window.previewImageFile = function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('form-avatar-preview').src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        };
+
+        window.triggerCameraCapture = function() {
+            const video = document.createElement('video');
+            navigator.mediaDevices.getUserMedia({ video: true }).then(stream => {
+                video.srcObject = stream;
+                video.play();
+                
+                // Automated immediate capture emulation for modern secure single-file sandbox compatibility
+                setTimeout(() => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 300;
+                    canvas.height = 300;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(video, 0, 0, 300, 300);
+                    document.getElementById('form-avatar-preview').src = canvas.toDataURL('image/jpeg');
+                    stream.getTracks().forEach(track => track.stop());
+                }, 1200);
+            }).catch(err => alert("Kamera tidak dijumpai atau akses ditolak."));
+        };
+
+        window.saveProfile = async function(e) {
+            e.preventDefault();
+            if (!CURRENT_USER) return;
+
+            const childId = document.getElementById('form-child-id').value || "child_" + Date.now();
+            const name = document.getElementById('form-child-name').value;
+            const dob = document.getElementById('form-child-dob').value;
+            const age = parseInt(document.getElementById('form-child-age').value) || 5;
+            const gender = document.querySelector('input[name="gender"]:checked').value;
+            const photoUrl = document.getElementById('form-avatar-preview').src;
+
+            const existing = CHILDREN_DATA[childId] || {};
+
+            const payload = {
+                nama: name,
+                tarikhLahir: dob,
+                umur: age,
+                jantina: gender,
+                photoUrl: photoUrl.startsWith('data:') ? photoUrl : (existing.photoUrl || ''),
+                bintang: existing.bintang || 0,
+                trofi: existing.trofi || 0,
+                progress: existing.progress || {},
+                aktivitiTerakhir: existing.aktivitiTerakhir || 'Pendaftaran'
+            };
+
+            await setDoc(doc(db, "Users", CURRENT_USER.uid, "Children", childId), payload, { merge: true });
+            closeProfileModal();
+            await loadChildrenProfiles();
+            selectChild(childId);
+        };
+
+        window.editCurrentProfile = function() {
+            if (ACTIVE_CHILD_ID) openProfileModal(ACTIVE_CHILD_ID);
+        };
+
+        window.deleteCurrentProfile = async function() {
+            if (!ACTIVE_CHILD_ID || !confirm("Adakah anda pasti mahu memadam profil ini? Semua progress pembelajaran akan hilang.")) return;
+            await deleteDoc(doc(db, "Users", CURRENT_USER.uid, "Children", ACTIVE_CHILD_ID));
+            ACTIVE_CHILD_ID = null;
+            closeProfileModal();
+            await loadChildrenProfiles();
+        };
+
+        // Text-To-Speech (TTS) Voice Engine Wrapper
+        window.speakPhrase = function(text) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'ms-MY'; // Set standard Malay pronunciation context
+                utterance.rate = 0.85; // Slow down slightly for clear kid audibility
+                window.speechSynthesis.speak(utterance);
+            }
+        };
+
+        // Comprehensive Core Curriculums Execution & Template Workspace Injectors
+        window.openModuleWorkspace = async function(moduleKey) {
+            const workspace = document.getElementById('module-workspace');
+            const title = document.getElementById('module-title');
+            const progressValue = document.getElementById('module-progress-value');
+            
+            title.innerText = MODUL_DATA[moduleKey].title;
+            const currentProgress = CHILDREN_DATA[ACTIVE_CHILD_ID]?.progress?.[moduleKey] || 0;
+            progressValue.innerText = `${currentProgress}%`;
+            
+            workspace.innerHTML = ''; // Reset UI view
+            navigate('module');
+
+            // Save and stamp active log module step
+            await updateDoc(doc(db, "Users", CURRENT_USER.uid, "Children", ACTIVE_CHILD_ID), {
+                aktivitiTerakhir: MODUL_DATA[moduleKey].title
+            });
+            CHILDREN_DATA[ACTIVE_CHILD_ID].aktivitiTerakhir = MODUL_DATA[moduleKey].title;
+            document.getElementById('dash-last-activity').innerText = MODUL_DATA[moduleKey].title;
+
+            // Route dynamically based on curriculum specification
+            switch(moduleKey) {
+                case 'abc':
+                    renderABCLesson(0);
+                    break;
+                case '123':
+                    render123Lesson(0);
+                    break;
+                case 'animal':
+                    renderAnimalLesson(0);
+                    break;
+                case 'warna':
+                    renderWarnaLesson(0);
+                    break;
+                case 'tracing':
+                    renderTracingLesson();
+                    break;
+                default:
+                    renderGenericPlaceholderLesson(moduleKey);
+            }
+        };
+
+        // Modul 1: Interactive ABC Engine
+        function renderABCLesson(index) {
+            const workspace = document.getElementById('module-workspace');
+            const data = CONTENT_DB.abc[index];
+            if (!data) { concludeModuleProgress('abc'); return; }
+
+            workspace.innerHTML = `
+                <div class="flex flex-col items-center text-center space-y-6 w-full max-w-sm">
+                    <div class="text-[120px] font-black tracking-tight text-indigo-600 leading-none select-none">${data.id}${data.id.toLowerCase()}</div>
+                    <div class="text-7xl">${data.icon}</div>
+                    <h3 class="text-3xl font-bold text-slate-800">${data.word}</h3>
+                    <button id="btn-audio" class="bg-indigo-100 text-indigo-700 font-bold p-4 rounded-2xl w-full flex items-center justify-center space-x-2 text-lg hover:bg-indigo-200 transition">
+                        <i class="fa-solid fa-volume-high text-xl"></i> <span>Dengar Sebutan</span>
+                    </button>
+                    <div class="flex justify-between w-full pt-4">
+                        <button id="btn-prev" class="px-5 py-2.5 bg-slate-100 text-slate-600 rounded-xl font-bold text-sm ${index === 0 ? 'opacity-40 pointer-events-none' : ''}">Kembali</button>
+                        <button id="btn-next" class="px-6 py-2.5 bg-emerald-500 text-white rounded-xl font-bold text-sm shadow">Seterusnya <i class="fa-solid fa-arrow-right ml-1"></i></button>
+                    </div>
+                </div>
+            `;
+
+            // Auto pronounce on loading card
+            speakPhrase(`${data.id}. ${data.word}`);
+
+            document.getElementById('btn-audio').onclick = () => speakPhrase(`${data.id}. ${data.word}`);
+            document.getElementById('btn-prev').onclick = () => renderABCLesson(index - 1);
+            document.getElementById('btn-next').onclick = () => {
+                updateProgressMetric('abc', Math.round(((index + 1) / CONTENT_DB.abc.length) * 100));
+                renderABCLesson(index + 1);
+            };
+        }
+
+        // Modul 2: Numbers & Object Quantities (123)
+        function render123Lesson(index) {
+            const workspace = document.getElementById('module-workspace');
+            const data = CONTENT_DB.123[index];
+            if (!data) { concludeModuleProgress('123'); return; }
+
+            workspace.innerHTML = `
+                <div class="flex flex-col items-center text-center space-y-6 w-full max-w-sm">
+                    <div class="text-[130px] font-black text-emerald-500 leading-none">${data.num}</div>
+                    <div class="text-4xl tracking-widest bg-emerald-50 p-6 rounded-2xl border border-emerald-100 min-h-[80px] flex items-center justify-center">${data.icon}</div>
+                    <button id="btn-audio" class="bg-emerald-100 text-emerald-700 font-bold p-4 rounded-2xl w-full flex items-center justify-center space-x-2 text-lg hover:bg-emerald-200 transition">
+                        <i class="fa-solid fa-volume-high text-xl"></i> <span>Kira Bersama</span>
+                    </button>
+                    <div class="flex justify-between w-full pt-4">
+                        <button id="btn-prev" class="px-5 py-2.5 bg-slate-100 text-slate-600 rounded-xl font-bold text-sm ${index === 0 ? 'opacity-40 pointer-events-none' : ''}">Kembali</button>
+                        <button id="btn-next" class="px-6 py-2.5 bg-emerald-500 text-white rounded-xl font-bold text-sm shadow">Seterusnya <i class="fa-solid fa-arrow-right ml-1"></i></button>
+                    </div>
+                </div>
+            `;
+
+            speakPhrase(data.num.toString());
+
+            document.getElementById('btn-audio').onclick = () => speakPhrase(data.num.toString());
+            document.getElementById('btn-prev').onclick = () => render123Lesson(index - 1);
+            document.getElementById('btn-next').onclick = () => {
+                updateProgressMetric('123', Math.round(((index + 1) / CONTENT_DB.123.length) * 100));
+                render123Lesson(index + 1);
+            };
+        }
+
+        // Modul 3: Animals Factsheet
+        function renderAnimalLesson(index) {
+            const workspace = document.getElementById('module-workspace');
+            const data = CONTENT_DB.animal[index];
+            if (!data) { concludeModuleProgress('animal'); return; }
+
+            workspace.innerHTML = `
+                <div class="flex flex-col items-center text-center space-y-4 w-full max-w-md">
+                    <span class="bg-amber-100 text-amber-800 text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full">Haiwan ${data.type}</span>
+                    <div class="text-[100px] leading-none my-2">${data.icon}</div>
+                    <h3 class="text-3xl font-black text-slate-800">${data.name}</h3>
+                    <p class="text-sm bg-slate-50 p-4 rounded-2xl text-slate-600 italic border border-slate-100">" ${data.fact} "</p>
+                    <button id="btn-audio" class="bg-amber-500 hover:bg-amber-600 text-white font-bold p-3.5 rounded-2xl w-full flex items-center justify-center space-x-2 transition shadow">
+                        <i class="fa-solid fa-volume-high"></i> <span>Bunyi Haiwan: ${data.sound}</span>
+                    </button>
+                    <div class="flex justify-between w-full pt-4">
+                        <button id="btn-prev" class="px-5 py-2.5 bg-slate-100 text-slate-600 rounded-xl font-bold text-sm ${index === 0 ? 'opacity-40 pointer-events-none' : ''}">Kembali</button>
+                        <button id="btn-next" class="px-6 py-2.5 bg-emerald-500 text-white rounded-xl font-bold text-sm shadow">Seterusnya <i class="fa-solid fa-arrow-right ml-1"></i></button>
+                    </div>
+                </div>
+            `;
+
+            speakPhrase(`${data.name}. Bunyi haiwan, ${data.sound}`);
+
+            document.getElementById('btn-audio').onclick = () => speakPhrase(data.sound);
+            document.getElementById('btn-prev').onclick = () => renderAnimalLesson(index - 1);
+            document.getElementById('btn-next').onclick = () => {
+                updateProgressMetric('animal', Math.round(((index + 1) / CONTENT_DB.animal.length) * 100));
+                renderAnimalLesson(index + 1);
+            };
+        }
+
+        // Modul 5: Primary Colors Lesson
+        function renderWarnaLesson(index) {
+            const workspace = document.getElementById('module-workspace');
+            const data = CONTENT_DB.warna[index];
+            if (!data) { concludeModuleProgress('warna'); return; }
+
+            workspace.innerHTML = `
+                <div class="flex flex-col items-center text-center space-y-6 w-full max-w-sm">
+                    <div class="w-40 h-40 rounded-full shadow-lg border-4 border-white transition transform hover:scale-110" style="background-color: ${data.hex}"></div>
+                    <h3 class="text-3xl font-black text-slate-800">${data.name}</h3>
+                    <button id="btn-audio" class="bg-purple-100 text-purple-700 font-bold p-3.5 rounded-2xl w-full flex items-center justify-center space-x-2 transition">
+                        <i class="fa-solid fa-palette"></i> <span>Sebut Warna</span>
+                    </button>
+                    <div class="flex justify-between w-full pt-4">
+                        <button id="btn-prev" class="px-5 py-2.5 bg-slate-100 text-slate-600 rounded-xl font-bold text-sm ${index === 0 ? 'opacity-40 pointer-events-none' : ''}">Kembali</button>
+                        <button id="btn-next" class="px-6 py-2.5 bg-emerald-500 text-white rounded-xl font-bold text-sm shadow">Seterusnya <i class="fa-solid fa-arrow-right ml-1"></i></button>
+                    </div>
+                </div>
+            `;
+
+            speakPhrase(`Warna ${data.name}`);
+
+            document.getElementById('btn-audio').onclick = () => speakPhrase(data.name);
+            document.getElementById('btn-prev').onclick = () => renderWarnaLesson(index - 1);
+            document.getElementById('btn-next').onclick = () => {
+                updateProgressMetric('warna', Math.round(((index + 1) / CONTENT_DB.warna.length) * 100));
+                renderWarnaLesson(index + 1);
+            };
+        }
+
+        // Modul 4: High-Performance Canvas-based Writing/Tracing Pad
+        function renderTracingLesson() {
+            const workspace = document.getElementById('module-workspace');
+            workspace.innerHTML = `
+                <div class="flex flex-col items-center text-center space-y-4 w-full max-w-sm">
+                    <p class="text-xs text-slate-400 font-bold uppercase tracking-wider">Tulis semula huruf di bawah menggunakan jari</p>
+                    <div class="relative bg-slate-50 border-4 border-dashed border-slate-300 rounded-3xl overflow-hidden w-full aspect-square shadow-inner flex items-center justify-center select-none">
+                        <span class="absolute text-[180px] font-bold text-slate-200 select-none pointer-events-none">A</span>
+                        <canvas id="tracing-canvas" class="absolute inset-0 w-full h-full cursor-crosshair z-10"></canvas>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3 w-full">
+                        <button id="btn-clear-canvas" class="bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-2.5 rounded-xl transition text-sm">Padam Skrin</button>
+                        <button id="btn-complete-canvas" class="bg-rose-500 hover:bg-rose-600 text-white font-bold py-2.5 rounded-xl shadow transition text-sm">Selesai ✨</button>
+                    </div>
+                </div>
+            `;
+
+            speakPhrase("Mari tulis huruf A");
+
+            const canvas = document.getElementById('tracing-canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Adjust canvas bounding context
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+            
+            ctx.strokeStyle = '#F43F5E'; // Vibrant pink line stroke
+            ctx.lineWidth = 12;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+
+            let drawing = false;
+
+            function getCoordinates(e) {
+                const rect = canvas.getBoundingClientRect();
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                return { x: clientX - rect.left, y: clientY - rect.top };
+            }
+
+            function startDraw(e) { drawing = true; draw(e); }
+            function stopDraw() { drawing = false; ctx.beginPath(); }
+            
+            Normally I can help with things like this, but I don't seem to have access to that content. You can try again or ask me for something else.
