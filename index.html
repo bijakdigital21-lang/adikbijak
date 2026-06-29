@@ -9,7 +9,7 @@
     <!-- Google Fonts (Poppins) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght=400;500;600;700&display=swap" rel="stylesheet">
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Canvas Confetti -->
@@ -40,8 +40,6 @@
         body { font-family: 'Poppins', sans-serif; transition: background-color 0.3s, color 0.3s; }
         .page-transition { animation: fadeIn 0.4s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .bounce-effect { animation: bounce 0.5s ease-in-out; }
-        @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
     </style>
 </head>
 <body class="bg-brand-background text-slate-800 dark:bg-brand-darkBg dark:text-slate-100 min-h-screen flex flex-col">
@@ -541,7 +539,8 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         // Global Firebase configuration bindings extracted directly from the provider parameters
         const firebaseConfig = {
@@ -554,10 +553,12 @@
             appId: "1:566306302068:web:effb5a20e4818cee960921"
         };
 
-        // Initialize App Infrastructure References
+        // Initialize App Infrastructure References with Local Offline Cache capability enabled
         const firebaseApp = initializeApp(firebaseConfig);
         const auth = getAuth(firebaseApp);
-        const db = getFirestore(firebaseApp);
+        const db = initializeFirestore(firebaseApp, {
+            localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+        });
         const googleProvider = new GoogleAuthProvider();
 
         // COMPREHENSIVE CURRICULUM SYLLABUS TAXONOMY MAP DATABASE STRUCTURE
@@ -594,12 +595,11 @@
             { id: 30, name: "Final Revision Quiz", objectives: "Validate mastery across the entire English grammar syllabus.", explanation: "This comprehensive module reviews all rules from the Alphabet up to Sentence Structures to certify absolute mastery.", examples: ["The ultimate benchmark test evaluating structural comprehension across every rule layer."], mistake: "Rushing choices without checking subject quantities or tense clues.", tip: "Read carefully, eliminate wrong answers first, and trust your training!", summary: "The ultimate validation milestone confirming English grammar proficiency." }
         ];
 
-        // GLOBAL PROCEDURAL SAMPLE QUESTION GENERATOR (Syllabus Question Bank Hydrator)
+        // GLOBAL PROCEDURAL SAMPLE QUESTION GENERATOR
         function generateLocalQuestionBankForTopic(topicId, topicName) {
             let list = [];
             const types = ["MCQ", "FITB", "CCS", "TF", "RW", "MATCH"];
             
-            // Loop pattern creating 150 unique, procedurally deterministic mock questions per topic
             for (let i = 1; i <= 150; i++) {
                 let type = types[(i + topicId) % types.length];
                 let questionObj = {
@@ -666,7 +666,6 @@
                 this.setupDOMEventListeners();
                 this.initThemeSkin();
                 
-                // Active Auth Listener tracking lifecycle triggers
                 onAuthStateChanged(auth, async (user) => {
                     if (user) {
                         this.currentUser = user;
@@ -688,7 +687,6 @@
                 document.getElementById("btn-login-google").addEventListener("click", () => this.handleGoogleLogin());
                 document.getElementById("btn-logout").addEventListener("click", () => this.handleSignOut());
                 
-                // Toggle Switches Listeners
                 document.getElementById("setting-toggle-dark").addEventListener("click", () => this.toggleDarkMode());
                 document.getElementById("setting-toggle-sound").addEventListener("click", () => {
                     this.settings.sound = !this.settings.sound;
@@ -767,9 +765,12 @@
 
                 if (docSnap.exists()) {
                     this.userData = docSnap.data();
+                    // Jaminan pemutus ralat: Tukar data String dari Firestore ke Integer Number secara automatik
+                    if (this.userData.unlockedTopicId) {
+                        this.userData.unlockedTopicId = parseInt(this.userData.unlockedTopicId);
+                    }
                     this.checkAndVerifyDailyStreak();
                 } else {
-                    // Create brand new learning framework tracking profile for new user registrations
                     this.userData = {
                         uid: this.currentUser.uid,
                         name: this.currentUser.displayName || "Explorer",
@@ -790,12 +791,10 @@
             }
 
             async seedInitialSyllabusSchemaDataToFirestore() {
-                // Background seed verification to optimize database reads
                 const metaRef = doc(db, "system", "syllabus_metadata");
                 const metaSnap = await getDoc(metaRef);
                 if (!metaSnap.exists()) {
                     await setDoc(metaRef, { initialized: true, timestamp: new Date().toISOString() });
-                    // Batch write core topics structure
                     const batch = writeBatch(db);
                     SYLLABUS_TOPICS.forEach(topic => {
                         const ref = doc(db, "topics", `topic_${topic.id}`);
@@ -809,7 +808,7 @@
                 const today = new Date().toISOString().split('T')[0];
                 const lastDate = this.userData.lastLearningDate;
                 
-                if (lastDate === today) return; // Already logged today
+                if (lastDate === today) return;
                 
                 const yesterday = new Date();
                 yesterday.setDate(yesterday.getDate() - 1);
@@ -817,11 +816,10 @@
 
                 if (lastDate === yesterdayStr) {
                     this.userData.dailyStreak += 1;
-                    // Check streak achievements milestones
                     if (this.userData.dailyStreak === 7) this.awardAchievement("7-Day Streak");
                     if (this.userData.dailyStreak === 30) this.awardAchievement("30-Day Streak");
                 } else {
-                    this.userData.dailyStreak = 1; // Streak broken
+                    this.userData.dailyStreak = 1;
                 }
                 this.userData.lastLearningDate = today;
                 this.syncUserDataToCloud();
@@ -841,13 +839,11 @@
             }
 
             navigate(pageId) {
-                // Screen layout switching routine matrix
                 const pages = ["auth", "home", "lesson", "quiz", "quiz-result", "profile", "settings"];
                 pages.forEach(p => document.getElementById(`page-${p}`).classList.add("hidden"));
                 
                 document.getElementById(`page-${pageId}`).classList.remove("hidden");
                 
-                // Update footer active color schemes elements
                 const footerItems = ["home", "profile", "settings"];
                 footerItems.forEach(item => {
                     const el = document.getElementById(`nav-item-${item}`);
@@ -884,13 +880,16 @@
                     let statusClass = "bg-slate-100 dark:bg-slate-900 opacity-60 border-slate-200 cursor-not-allowed";
                     let iconBadge = `<i class="fa-solid fa-lock text-slate-400"></i>`;
                     
+                    // Pastikan perbandingan ID ditukar kepada Integer
+                    const currentUnlockedId = parseInt(this.userData.unlockedTopicId || 1);
+
                     if (this.userData.completedTopics.includes(topic.id)) {
                         status = "Completed";
                         statusClass = "bg-white dark:bg-brand-darkCard border-brand-success hover:shadow-md cursor-pointer";
                         iconBadge = `<div class="bg-brand-success text-white p-1.5 rounded-full text-xs flex items-center justify-center w-6 h-6"><i class="fa-solid fa-check"></i></div>`;
-                    } else if (topic.id === this.userData.unlockedTopicId) {
+                    } else if (topic.id === currentUnlockedId) {
                         status = "Unlocked";
-                        statusClass = "bg-white dark:bg-brand-darkCard border-brand-primary ring-2 ring-indigo-100 dark:ring-indigo-950 hover:shadow-md cursor-pointer animate-pulse";
+                        statusClass = "bg-white dark:bg-brand-darkCard border-brand-primary ring-2 ring-indigo-100 dark:ring-indigo-950 hover:shadow-md cursor-pointer";
                         iconBadge = `<div class="bg-brand-primary text-white p-1.5 rounded-full text-xs flex items-center justify-center w-6 h-6"><i class="fa-solid fa-star text-xs"></i></div>`;
                     }
 
@@ -913,21 +912,27 @@
             }
 
             continueLearning() {
-                this.openTopicLesson(this.userData.unlockedTopicId);
+                // Baik pulih fungsi penentu ralat jenis data (Data Type Parsing Fix)
+                const currentUnlockedId = parseInt(this.userData.unlockedTopicId || 1);
+                this.openTopicLesson(currentUnlockedId);
             }
 
             openTopicLesson(topicId) {
-                const topic = SYLLABUS_TOPICS.find(t => t.id === topicId);
+                const idToFind = parseInt(topicId);
+                const topic = SYLLABUS_TOPICS.find(t => t.id === idToFind);
+                if (!topic) {
+                    console.error("Topic not found for ID:", idToFind);
+                    return;
+                }
                 this.currentTopic = topic;
                 
                 document.getElementById("lesson-title").innerText = `Mission ${topic.id}: ${topic.name}`;
                 document.getElementById("lesson-objectives").innerText = topic.objectives;
                 document.getElementById("lesson-explanation").innerHTML = topic.explanation;
                 
-                // Audio TTS Inject Mechanism
                 const examplesDiv = document.getElementById("lesson-examples");
                 examplesDiv.innerHTML = "";
-                topic.examples.forEach((ex, idx) => {
+                topic.examples.forEach((ex) => {
                     const p = document.createElement("div");
                     p.className = "flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900 rounded-xl text-sm font-medium border border-slate-100 dark:border-slate-800";
                     p.innerHTML = `
@@ -941,7 +946,6 @@
                 document.getElementById("lesson-tips").innerText = topic.tip;
                 document.getElementById("lesson-summary").innerText = topic.summary;
 
-                // Reset sub tabs layout views state
                 this.switchLessonTab("learn");
                 
                 const practiceBtn = document.getElementById("tab-btn-practice");
@@ -953,10 +957,10 @@
 
             playAudioPronunciation(text) {
                 if ('speechSynthesis' in window) {
-                    window.speechSynthesis.cancel(); // Stop active tracks
+                    window.speechSynthesis.cancel();
                     const utterance = new SpeechSynthesisUtterance(text);
                     utterance.lang = 'en-US';
-                    utterance.rate = 0.85; // Moderate speed layout for primary school children clarity
+                    utterance.rate = 0.85;
                     window.speechSynthesis.speak(utterance);
                 } else {
                     alert("Your browser does not support audio speech output.");
@@ -986,7 +990,6 @@
 
             setupPreQuizPracticeActivities() {
                 this.practiceIndex = 0;
-                // Seed 3 interactive mini activities before testing the official quiz
                 this.practiceQuestions = [
                     { type: "MCQ", question: `Choose the correct word: "I ___ a Malaysian school student."`, choices: ["am", "is", "are"], answer: "am" },
                     { type: "TF", question: `"Cats and dogs are examples of Common Nouns."`, choices: ["True", "False"], answer: "True" },
@@ -1060,7 +1063,6 @@
                     this.practiceIndex++;
                     this.renderPracticeStep();
                 } else {
-                    // Practice sequence ended -> Fire immediate core formal quiz phase initiation
                     this.startOfficialTopicQuiz();
                 }
             }
@@ -1071,8 +1073,6 @@
                 }
 
                 const completeBank = this.cachedQuestionBanks[this.currentTopic.id];
-                
-                // Shuffle array routine and pick EXACTLY 15 unique items without duplicates per prompt rule constraint
                 const shuffled = [...completeBank].sort(() => 0.5 - Math.random());
                 this.quizQuestions = shuffled.slice(0, 15);
                 
@@ -1103,10 +1103,9 @@
                 const optsContainer = document.getElementById("quiz-options-container");
                 optsContainer.innerHTML = "";
 
-                // Render dynamic operational layout configurations depending on taxonomy types
                 if (q.type === "MCQ" || q.type === "CCS" || q.type === "TF") {
                     const randomizedOpts = [...q.options].sort(() => 0.5 - Math.random());
-                    randomizedOpts.forEach((opt, index) => {
+                    randomizedOpts.forEach((opt) => {
                         const lbl = document.createElement("label");
                         lbl.className = "flex items-center space-x-3 p-4 border rounded-2xl bg-slate-50 dark:bg-slate-900 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-all border-slate-200 dark:border-slate-800";
                         lbl.innerHTML = `
@@ -1120,23 +1119,24 @@
                         <input type="text" id="quiz-fitb-field" oninput="document.getElementById('btn-quiz-submit').disabled = (this.value.trim() === '')" placeholder="Type your formal grammar answer here..." class="w-full p-4 border rounded-2xl bg-slate-50 dark:bg-slate-900 font-semibold focus:ring-2 focus:ring-brand-primary outline-none">
                     `;
                 } else if (q.type === "RW") {
-                    // Word Scramble UI layout mechanics
                     const flexBox = document.createElement("div");
                     flexBox.className = "flex flex-wrap gap-2 mb-3";
                     const shuffledWords = [...q.words].sort(() => 0.5 - Math.random());
                     shuffledWords.forEach(w => {
-                        flexBox.innerHTML += `<button onclick="app.appendScrambleWord('${w}')" class="bg-indigo-50 dark:bg-indigo-950 text-brand-primary font-bold px-3 py-2 rounded-xl text-sm border hover:bg-indigo-100">${w}</button>`;
+                        flexBox.innerHTML += `<button type="button" onclick="app.appendScrambleWord('${w}')" class="bg-indigo-50 dark:bg-indigo-950 text-brand-primary font-bold px-3 py-2 rounded-xl text-sm border hover:bg-indigo-100">${w}</button>`;
                     });
                     optsContainer.appendChild(flexBox);
                     optsContainer.innerHTML += `
                         <div class="p-3 border rounded-2xl min-h-[50px] bg-slate-50 dark:bg-slate-900 font-semibold text-sm flex flex-wrap gap-2" id="scramble-output-zone"></div>
-                        <button onclick="document.getElementById('scramble-output-zone').innerHTML='';" class="text-xs font-semibold text-rose-500 underline mt-1 block"><i class="fa-solid fa-trash-can"></i> Clear Arena</button>
+                        <button type="button" onclick="document.getElementById('scramble-output-zone').innerHTML='';" class="text-xs font-semibold text-rose-500 underline mt-1 block"><i class="fa-solid fa-trash-can"></i> Clear Arena</button>
                     `;
-                    // Setup internal loop checker to activate verification submit trigger button safely
-                    setInterval(() => {
+                    
+                    if(this.scrambleTimer) clearInterval(this.scrambleTimer);
+                    this.scrambleTimer = setInterval(() => {
                         const zone = document.getElementById('scramble-output-zone');
-                        if (zone) document.getElementById('btn-quiz-submit').disabled = (zone.innerText.trim() === '');
-                    }, 1000);
+                        const subBtn = document.getElementById('btn-quiz-submit');
+                        if (zone && subBtn) subBtn.disabled = (zone.innerText.trim() === '');
+                    }, 500);
                 } else if (q.type === "MATCH") {
                     optsContainer.innerHTML = `<div class="text-xs text-slate-400 font-bold mb-2">Select the option matching the target link pair sequence correctly:</div>`;
                     const matchKeys = Object.keys(q.matchPairs);
@@ -1161,10 +1161,13 @@
 
             appendScrambleWord(word) {
                 const zone = document.getElementById("scramble-output-zone");
-                zone.innerHTML += `<span class="bg-brand-primary text-white font-bold px-2.5 py-1 rounded-lg text-xs">${word}</span> `;
+                if(zone) {
+                    zone.innerHTML += `<span class="bg-brand-primary text-white font-bold px-2.5 py-1 rounded-lg text-xs">${word}</span> `;
+                }
             }
 
             submitQuizAnswer() {
+                if(this.scrambleTimer) clearInterval(this.scrambleTimer);
                 const q = this.quizQuestions[this.currentQuizIdx];
                 let studentInput = "";
 
@@ -1184,7 +1187,6 @@
 
                 this.quizAnswersLog.push({ question: q.question, userAns: studentInput, correctAns: q.answer, correct: isCorrect, explanation: q.explanation });
 
-                // Reveal Instant Explanations Display Box Overlay
                 const box = document.getElementById("quiz-explanation-box");
                 const statusLbl = document.getElementById("quiz-feedback-status");
                 const textLbl = document.getElementById("quiz-feedback-text");
@@ -1219,7 +1221,6 @@
                 const percentage = Math.round((this.quizScore / totalQuestions) * 100);
                 const timeElapsed = Math.round((new Date() - this.quizStartTime) / 1000);
                 
-                // Formal Grading Scale Matrix Module Core
                 let grade = "Try Again";
                 let message = "Keep reviewing lessons to improve matching skills!";
                 if (percentage >= 90) { grade = "Excellent"; message = "Superb! You are a certified Grammar Genius! 🌟"; }
@@ -1234,22 +1235,21 @@
                 document.getElementById("result-message").innerText = message;
                 document.getElementById("quiz-result-topic").innerText = this.currentTopic.name;
 
-                // Award points and milestone unlocks
                 const awardedPoints = this.quizScore * 10;
                 this.userData.totalPoints += awardedPoints;
 
-                // Sync History Mapping Log Array to Firestore Schema logs
                 if (!this.userData.quizHistory[this.currentTopic.id]) {
                     this.userData.quizHistory[this.currentTopic.id] = [];
                 }
                 this.userData.quizHistory[this.currentTopic.id].push({ score: this.quizScore, percentage: percentage, grade: grade, date: new Date().toISOString() });
 
-                // Unlock next milestone if requirements met
                 if (percentage >= 60) {
                     if (!this.userData.completedTopics.includes(this.currentTopic.id)) {
                         this.userData.completedTopics.push(this.currentTopic.id);
-                        if (this.currentTopic.id === this.userData.unlockedTopicId && this.userData.unlockedTopicId < 30) {
-                            this.userData.unlockedTopicId += 1;
+                        
+                        const currentUnlocked = parseInt(this.userData.unlockedTopicId || 1);
+                        if (this.currentTopic.id === currentUnlocked && currentUnlocked < 30) {
+                            this.userData.unlockedTopicId = currentUnlocked + 1;
                         }
                     }
                     this.awardAchievement("First Quiz Completed");
@@ -1258,13 +1258,11 @@
                     if (this.userData.completedTopics.length === 10) this.awardAchievement("10 Topics Completed");
                     if (this.userData.totalPoints >= 1000) this.awardAchievement("1000 Points");
                     
-                    // Fire colorful celebration animations cascade layout on top-tier clearance
                     confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
                 }
 
                 await this.syncUserDataToCloud();
 
-                // Process Wrong answers log for student error evaluation diagnostics view
                 const reviewPanel = document.getElementById("result-review-panel");
                 const wrongList = document.getElementById("result-wrong-questions-list");
                 wrongList.innerHTML = "";
@@ -1274,7 +1272,7 @@
                     reviewPanel.classList.remove("hidden");
                     wrongAnswers.forEach(w => {
                         wrongList.innerHTML += `
-                            <div class="text-xs border-b pb-2">
+                            <div class="text-xs border-b pb-2 text-left">
                                 <div class="font-bold text-slate-700 dark:text-slate-200">Q: ${w.question}</div>
                                 <div class="text-rose-500 font-medium">Your input: "${w.userAns || 'Skipped/None'}"</div>
                                 <div class="text-brand-success font-semibold">Correct rule: "${w.correctAns}"</div>
@@ -1345,7 +1343,6 @@
             }
 
             playTone(isSuccess) {
-                // High fidelity browser audio generator tone synthesis module
                 try {
                     const ctx = new (window.AudioContext || window.webkitAudioContext)();
                     const osc = ctx.createOscillator();
@@ -1353,14 +1350,14 @@
                     osc.connect(gain);
                     gain.connect(ctx.destination);
                     if (isSuccess) {
-                        osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5 Tone
-                        osc.frequency.setValueAtTime(880, ctx.currentTime + 0.1); // A5 Tone
+                        osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+                        osc.frequency.setValueAtTime(880, ctx.currentTime + 0.1);
                         gain.gain.setValueAtTime(0.1, ctx.currentTime);
                         osc.start();
                         osc.stop(ctx.currentTime + 0.25);
                     } else {
                         osc.type = "sawtooth";
-                        osc.frequency.setValueAtTime(220, ctx.currentTime); // A3 Low Tone
+                        osc.frequency.setValueAtTime(220, ctx.currentTime);
                         gain.gain.setValueAtTime(0.08, ctx.currentTime);
                         osc.start();
                         osc.stop(ctx.currentTime + 0.2);
@@ -1368,7 +1365,6 @@
                 } catch (e) { console.warn("Context sound blocked by interface policy."); }
             }
 
-            // CMS SECURITY EXPANSION INTERFACES FOR BACKEND ADMINISTRATORS
             openAdminConsole() {
                 const sel = document.getElementById("admin-topic-selector");
                 sel.innerHTML = "";
@@ -1400,7 +1396,6 @@
 
             appendMockQuizQuestionAdmin() {
                 const id = parseInt(document.getElementById("admin-topic-selector").value);
-                const topic = SYLLABUS_TOPICS.find(t => t.id === id);
                 const currentLen = this.cachedQuestionBanks[id].length;
                 
                 const newQ = {
@@ -1422,13 +1417,11 @@
                 const id = parseInt(document.getElementById("admin-topic-selector").value);
                 const topic = SYLLABUS_TOPICS.find(t => t.id === id);
                 
-                // Write active inputs down into core runtime memory objects
                 topic.objectives = document.getElementById("admin-input-objectives").value;
                 topic.explanation = document.getElementById("admin-input-explanation").value;
                 topic.mistake = document.getElementById("admin-input-mistake").value;
                 topic.tip = document.getElementById("admin-input-tip").value;
 
-                // Sync modified state directly into Cloud Firestore document schema matrix
                 const docRef = doc(db, "topics", `topic_${id}`);
                 await setDoc(docRef, topic, { merge: true });
 
@@ -1438,9 +1431,8 @@
             }
         }
 
-        // Initialize App Runtime Execution Sequence
         const app = new BijakGrammarApp();
-        window.app = app; // Bind execution tree elements to global scope access vectors
+        window.app = app;
         app.init();
     </script>
 </body>
